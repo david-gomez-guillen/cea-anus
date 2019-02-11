@@ -37,10 +37,12 @@ Node <- setRefClass('Node',
                         }
                         return(actualChildrenProbs)
                       },
-                      getExpectedMeasure = function(measure, context=list()) {
+                      getExpectedMeasure = function(measure, context=list(), use.only.leaves=FALSE) {
+                        # If accumulative = TRUE, the expected value of the measure will be the weighted mean
+                        # of all nodes. If false, the weighted mean will only consider the leaves.
                         measureValue <- info[[measure]]
                         m <- parseNodeValue(measureValue, context)
-                        if (length(m) == 0 || is.na(m)) {
+                        if ((use.only.leaves && length(children) > 0) || length(m) == 0 || is.na(m)) {
                           # warning(paste0('"', measureValue, '" does not exist for node "', name, '"; assuming 0'))
                           currentMeasure <- 0
                         }
@@ -50,7 +52,7 @@ Node <- setRefClass('Node',
                         
                         if (length(children) > 0) {
                           actualChildrenProbs <- parseProbs(context)
-                          childrenMeasure <- sum(sapply(seq(length(children)), 
+                          childrenMeasure <- sum(sapply(seq_along(children), 
                                                         function(i) {
                                                           child <- children[[i]]
                                                           p <- as.numeric(actualChildrenProbs[[i]])
@@ -62,7 +64,7 @@ Node <- setRefClass('Node',
                         }
                         return(currentMeasure)
                       },
-                      getExpectedMeasureBatch = function(measure, context=list()) {
+                      getExpectedMeasureBatch = function(measure, context=list(), use.only.leaves=FALSE) {
                         if (length(context) == 0) {
                           num_simulations <- 1
                         } else if (is.matrix(context[[1]])) {
@@ -70,24 +72,27 @@ Node <- setRefClass('Node',
                         } else {
                           num_simulations <- length(context[[1]])
                         }
-                        results <- lapply(seq(num_simulations), function(i) {
+                        num_samples <- min(sapply(context, function(v) length(v)))
+                        results <- sapply(seq(num_simulations), function(i) {
                           iterationContext <- sapply(context, function(v) {
-                            if (is.matrix(v)) {
+                            if (length(v) != num_samples) {
+                              v
+                            } else if (is.matrix(v)) {
                               v[i,]
                             } else {
                               v[[i]]
                             }
                           })
-                          iterResults <- getExpectedMeasure(measure, iterationContext)
+                          iterResults <- getExpectedMeasure(measure, iterationContext, use.only.leaves)
                           return(iterResults)
                         })
                         return(results)
                       },
                       getExpectedCost = function(context=list()) {
-                        return(getExpectedMeasureBatch('cost', context))
+                        return(getExpectedMeasureBatch('cost', context, use.only.leaves = FALSE))
                       },
                       getExpectedEffectiveness = function(context=list()) {
-                        return(getExpectedMeasure('eff', context))
+                        return(getExpectedMeasureBatch('utility', context, use.only.leaves = TRUE))
                       },
                       getCostEffectiveness = function(context=list()) {
                         return(getExpectedCost(context) / getExpectedEffectiveness(context))
@@ -99,14 +104,15 @@ Node <- setRefClass('Node',
                         return(getExpectedEffectiveness(context) - getExpectedCost(context) / wtp)
                       },
                       getUsedVariables = function() {
-                        vars <- c(childrenProbs, cost, eff)
-                        vars <- vars[vars != '#' & !is.na(vars) & suppressWarnings(is.na(as.numeric(vars)))]
+                        vars <- c(probs)
+                        vars <- append(vars, c(info[['cost']], info[['utility']]))
+                        vars <- vars[vars != '_' & !is.na(vars) & suppressWarnings(is.na(as.numeric(vars)))]
                         for(child in children) {
                           vars <- c(vars, child$getUsedVariables())
                         }
                         return(vars[!duplicated(vars)])
                       },
-                      runIterations = function(context=list()) {
+                      runIterations = function(context=list(), attribute=NULL) {
                         if (length(context) == 0) {
                           num_simulations <- 1
                         } else if (is.matrix(context[[1]])) {
@@ -125,6 +131,9 @@ Node <- setRefClass('Node',
                           iterResults <- as.environment(runIteration(context=iterationContext))
                           return(iterResults)
                         })
+                        if (!is.null(attribute)) {
+                          results <- sapply(results, function(r) get(attribute, envir=r))
+                        }
                         return(results)
                       },
                       runIteration = function(context=list()) {
@@ -143,18 +152,22 @@ Node <- setRefClass('Node',
                         if (!is.null(prob)) {
                           text <- c(text, paste0('p = ', prob))
                         }
-                        if (!is.null(cost)) {
-                          text <- c(text, paste0('cost = ', cost))
+                        if (!is.null(info[['cost']])) {
+                          text <- c(text, paste0('cost = ', info[['cost']]))
                         }
-                        if (!is.null(eff)) {
-                          text <- c(text, paste0('eff = ', eff))
+                        if (!is.null(info[['utility']])) {
+                          text <- c(text, paste0('u = ', info[['utility']]))
                         }
                         if (length(text) > 0) {
                           displayedTree <- paste0(displayedTree, ' (', paste0(text, collapse = ', '), ')')
                         }
                         for(i in seq_along(children)) {
                           child <- children[[i]]
-                          childProb <- childrenProbs[[i]]
+                          if (length(probs) > 1) {
+                            childProb <- probs[[i]]
+                          } else {
+                            childProb <- paste0(probs, '[', i, ']')
+                          }
                           displayedTree <- paste(displayedTree, child$toString(level=level+1, prob=childProb), sep='\n')
                         }
                         return(displayedTree)
@@ -177,9 +190,10 @@ Node <- setRefClass('Node',
                         }
                         
                         fullResults <- data.frame()
+                        num_samples <- sapply(context, function(v) length(v))
                         for(i in seq(samples)) {
                           currentContext <- sapply(context, function(v) {
-                            if (class(v) == 'matrix') {
+                            if (is.matrix(v) || (length(v) != num_samples)) {
                               return(v[i,])
                             } else {
                               return(v[[i]])
@@ -205,8 +219,8 @@ Node <- setRefClass('Node',
                                 ICER=NA
                               )))
                           alternatives <- list(...)
-                          for (alt in names(alternatives)) {
-                            altTree <- alternatives[alt][[1]]
+                          for (alt in names(alternatives[[1]])) {
+                            altTree <- alternatives[[1]][[alt]]
                             c <- altTree$getExpectedCost(currentContext)
                             ic <- c - baseCost
                             e <- altTree$getExpectedEffectiveness(currentContext)
@@ -236,9 +250,13 @@ Node <- setRefClass('Node',
                         }
                         
                         fullSummary <- fullResults[,c('strategy', 'C', 'IC', 'E', 'IE', 'CE', 'ICER')]
-                        fullSummary.mean <- aggregate(fullSummary, by=list(group=fullSummary$strategy), mean)
+                        fullSummary.mean <- aggregate(fullSummary, by=list(group=fullSummary$strategy), function(g) {
+                          if (!any(is.numeric(g))) NA else mean(g)
+                          })
                         fullSummary.mean$strategy <- fullSummary.mean$group
-                        fullSummary.sd <- aggregate(fullSummary, by=list(group=fullSummary$strategy), sd)
+                        fullSummary.sd <- aggregate(fullSummary, by=list(group=fullSummary$strategy), function(g) {
+                          if (!any(is.numeric(g))) NA else sd(g)
+                        })
                         fullSummary.sd$strategy <- fullSummary.sd$group
                         
                         fullSummary.mean <- fullSummary.mean[order(fullSummary.mean$E),]
@@ -248,10 +266,9 @@ Node <- setRefClass('Node',
                         )
                         fullSummary.mean$domination <- 'undominated'
                         for(index in seq(2,nrow(fullSummary.mean))) {
-                          print(fullSummary.mean[index,])
                           if (fullSummary.mean[index, 'IE'] < 0) {
                             fullSummary.mean[index, 'domination'] <- 'absolute'
-                          } else if (any(fullSummary.mean[index, 'ICER'] > fullSummary.mean[(index+1):nrow(fullSummary.mean), 'ICER'])) {
+                          } else if (any(fullSummary.mean[index, 'ICER'] > fullSummary.mean[min(index+1, nrow(fullSummary.mean)):nrow(fullSummary.mean), 'ICER'])) {
                             fullSummary.mean[index, 'domination'] <- 'extended'
                           }
                         }
@@ -269,59 +286,6 @@ Node <- setRefClass('Node',
                         return(fullSummary.mean)
                       }
                     ))
-
-# parseJSONDecisionTree <- function(filePath) {
-#   treeSpec <- fromJSON(filePath, simplifyVector = TRUE)
-#   context <- treeSpec$context
-#   nodes <- list()
-#   childrenNodes <- c()
-#   
-#   parseNode <- function(n) {
-#     n$cost <- n$cost
-#     n$eff <- n$eff
-#     newNode <- Node(name=n$name,
-#                     cost=n$cost,
-#                     eff=n$eff,
-#                     childrenProbs=n$childrenProbs)
-#     
-#     if (length(n$children) > 0) {
-#       newNode$childrenProbs <- n$childrenProbs
-#       newNode$children <- apply(n$children, 1, function(child) {
-#         isIncluded <- 'include' %in% names(child) && 
-#           !is.null(child[['include']]) && 
-#           !is.na(child[['include']])
-#         if (isIncluded) {
-#           childNode <- parseJSONDecisionTree(child['include'])
-#         } else {
-#           childNode <- parseNode(as.list(child))
-#         }
-#         childrenNodes <- append(childrenNodes, as.list(child)$name)
-#         childNode
-#       })
-#       names(newNode$children) <- lapply(newNode$children, function(child) {child$name})
-#     } else {
-#       newNode$childrenProbs <- numeric(0)
-#       newNode$children <- list()
-#       childrenNodes <- NA
-#     }
-#     nodes[[n$name]] <- childrenNodes
-#     newNode
-#   }
-#   
-#   tree <- parseNode(treeSpec)
-#   
-#   connectionMatrix <- matrix(data=0, nrow=length(nodes), ncol=length(nodes), dimnames = list(names(nodes), names(nodes)))
-#   for(node in names(nodes)) {
-#     if (!is.na(nodes[[node]])) {
-#       for(neighbour in nodes[[node]]) {
-#         connectionMatrix[node, neighbour] <- 1
-#         connectionMatrix[neighbour, node] <- 1
-#       }
-#     }
-#   }
-#   
-#   tree
-# }
 
 parseYAML <- function(filePath) {
   treeSpec <- yaml.load_file(filePath)
@@ -351,11 +315,11 @@ parseYAML <- function(filePath) {
     if (length(node$children) > 0) {
       newNode$probs <- parseProbs(node$probs)
       newNode$children <- lapply(node$children, function(child) {
-        isIncluded <- 'include' %in% names(child) && 
-          !is.null(child[['include']]) && 
-          !is.na(child[['include']])
+        isIncluded <- 'include' %in% names(child[[1]]) && 
+          !is.null(child[[1]][['include']]) && 
+          !is.na(child[[1]][['include']])
         if (isIncluded) {
-          childNode <- parseYAML(child['include'])
+          childNode <- parseYAML(child[[1]]['include'][[1]])
         } else {
           childNode <- parseNode(child)
         }
@@ -390,32 +354,63 @@ parseYAML <- function(filePath) {
 N <- 10000
 
 conventional <- parseYAML('conventional.yaml')
+conventional_hpv16la <- parseYAML('conventional_hpv16la.yaml')
 
-context <- list(
-  p_cyto_benign=runif(N,.1,.3),
-  p_no_hsil=runif(N,.8,.9),
-  p_hsil=runif(N,.1,.2),
-  p_regression=runif(N,.4,.6),
-  p_cyto_benign_hpv16_neg=runif(N,.7,.8),
-  p_cyto_benign_hpv1618_neg=runif(N,.7,.75), # Beware probability consistency!
-  p_cyto_benign_hpvhr_neg=runif(N,.75,.8),
-  p_cyto_benign_ascus_lsil_arnm_neg=runif(N,.7,.8),
-  
-  dist_hra = rdirichlet(N, c(60, 3, 1)),
-  
-  c_followup = runif(N, 1000, 2000),
-  c_hra = runif(N, 20000, 30000),
-  c_surgery = runif(N, 10000, 20000)
-)
+generateContext <- function(N) {
+  context <- list(
+    p_cyto_benign=runif(N,.7,.9),
+    p_cyto_hpv16la_benign=runif(N, .7, .9),
+    p_no_hsil=runif(N,.8,.9),
+    p_hsil=runif(N,.1,.2),
+    p_regression=runif(N,.4,.6),
+    p_cyto_benign_hpv16_neg=runif(N,.7,.8),
+    p_cyto_benign_hpv1618_neg=runif(N,.7,.75), # Beware probability consistency!
+    p_cyto_benign_hpvhr_neg=runif(N,.75,.8),
+    p_cyto_benign_ascus_lsil_arnm_neg=runif(N,.7,.8),
+    
+    dist_hra = rdirichlet(N, c(60, 3, 1)),
+    
+    c_cyto = runif(N, 200, 400),
+    c_cyto_hpv16la = runif(N, 200, 400),
+    c_followup = runif(N, 1000, 2000),
+    c_hra = runif(N, 20000, 30000),
+    c_surgery = runif(N, 10000, 20000),
+    
+    u_cyto_benign = runif(N, .9, 1),
+    u_no_hsil = runif(N, .8, .9),
+    u_hsil = runif(N, .7, .8),
+    u_surgery = runif(N, .3, .6)
+  )
+  return(context)
+}
+
+# conventional$compareStrategies(alternatives=list(
+#                                 hpv16la=conventional_hpv16la
+#                                ),
+#                                context=generateContext(N))
 
 # profvis({
-  conventional$getExpectedEffectiveness(context)
+  # cat(conventional$toString())
+  # conventional$getNetHealthBenefit(wtp=30000, context)
+  # conventional$getUsedVariables()
+  # conventional_hpv16la$getExpectedCost(context)
+  # conventional$getExpectedEffectiveness(context)
+  # conventional$getCostEffectiveness(context)
 # })
 
 # profvis({
+  context <- generateContext(N)
+  results <- conventional$runIterations(context=context, 'name')
+  N_surgery <- length(results[results %in% c('surgery', 'followup_surgery')])
+  
+  context <- generateContext(N-N_surgery)
+  context[['p_cyto_benign']] <- runif(N-N_surgery,.8,.95)
   results <- conventional$runIterations(context=context)
+  N_surgery <- N_surgery + length(results[results %in% c('surgery', 'followup_surgery')])
+  
+  
+  context <- generateContext(N-N_surgery)
+  context[['p_cyto_benign']] <- runif(N-N_surgery,.9,1)
+  results <- conventional$runIterations(context=context)
+  N_surgery <- N_surgery + length(results[results %in% c('surgery', 'followup_surgery')])
 # })
-
-resultsNames <- sapply(results, function(r)r$name)
-
-print(table(resultsNames))

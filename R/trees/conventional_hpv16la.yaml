@@ -1,7 +1,6 @@
-cytology:
-  description: Cytology test
-  cost: c_cyto
-  probs: p_cyto_benign,_
+cytology_hpv16la:
+  description: Cytology + HPV16 (LA) test
+  probs: p_cyto_hpv16la_benign,_
   children:
     # Cyto benign
     - annual_followup:

@@ -23,6 +23,6 @@ plot(net, vertex.cex = 3)
 # plot(net_igraph, edge.arrow.size = 0.2, edge.label=edges$weight)
 
 edges$label <- edges$weight
-p <- visNetwork(nodes, edges, width='100%') %>% 
+p <- visNetwork(nodes, edges) %>% 
   visEdges(arrows='from', length=200)
 print(p)

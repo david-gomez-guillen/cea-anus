@@ -1,0 +1,31 @@
+hra:
+  description: High Resolution Anoscopy
+  cost: c_hra
+  probs: dist_hra
+  children:
+    # HRA, cytology no HSIL
+    - hra_annual_followup:
+        description: Annual followup after HRA
+        cost: c_followup
+        utility: u_no_hsil
+    # HSIL in HRA or cytology
+    - semestral_followup:
+        description: Semestral followup after HSIL on HRA
+        cost: c_followup
+        probs: p_regression,_
+        children:
+          # No HSIL in HRA, cytology (two consecutive followups)
+          - regression_annual_followup:
+              description: Annual followup after regression
+              cost: c_followup
+              utility: u_hsil
+          # Invasive cancer
+          - followup_surgery:
+              description: Colorrectal surgery
+              cost: c_surgery
+              utility: u_surgery
+    # Invasive cancer
+    - surgery:
+        description: Colorrectal surgery
+        cost: c_surgery
+        utility: u_surgery
