@@ -1,0 +1,34 @@
+{
+	"name":"aar",
+	"cost": "c_aar",
+	"childrenProbs": ["p_aar_cyto_no_hsil", "p_aar_no_hsil_cyto_hsil_asch", "p_aar_hsil", "#"],
+	"children": [
+		{
+			"name": "aar_followup",
+			"cost": "c_followup",
+			"eff": "u_no_hsil"
+		},
+		{
+			"name": "aar_sem_followup",
+			"cost": "c_aar",
+			"childrenProbs": ["p_regression", "#"],
+			"children": [
+				{
+				  "name": "followup",
+				  "cost": "c_followup",
+				  "eff": "u_regression"
+				},
+				{
+				  "name": "surgery",
+				  "cost": "c_surgery",
+				  "eff": "u_surgery"
+				}
+			]
+		},
+		{
+			"name": "surgery",
+			"cost": "c_surgery",
+			"eff": "u_surgery"
+		}
+	]
+}

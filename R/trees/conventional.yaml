@@ -1,0 +1,41 @@
+cytology:
+  description: Cytology test
+  probs: p_cyto_benign,_
+  children:
+    # Cyto benign
+    - annual_followup:
+        description: Annual followup after cytology
+        cost: c_followup
+        utility: u_cyto_benign
+    # Cyto not benign
+    - hra:
+        description: High Resolution Anoscopy
+        cost: c_hra
+        probs: dist_hra
+        children:
+          #
+          - hra_annual_followup:
+              description: Annual followup after HRA
+              cost: c_followup
+              utility: u_no_hsil
+          #
+          - semestral_followup:
+              description: Semestral followup after HSIL on HRA
+              cost: c_followup
+              probs: p_regression,_
+              children:
+                #
+                - regression_annual_followup:
+                    description: Annual followup after regression
+                    cost: c_followup
+                    utility: u_hsil
+                #
+                - followup_surgery:
+                    description: Colorrectal surgery
+                    cost: c_surgery
+                    utility: u_surgery
+          #
+          - surgery:
+              description: Colorrectal surgery
+              cost: c_surgery
+              utility: u_surgery
