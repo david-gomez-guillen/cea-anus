@@ -4,6 +4,7 @@ library(profvis)
 library(dirmult)
 library(yaml)
 library(profvis)
+library(visNetwork)
 
 Node <- setRefClass('Node',
                     fields=c('name', 'info', 'probs', 'children'),
@@ -171,6 +172,39 @@ Node <- setRefClass('Node',
                           displayedTree <- paste(displayedTree, child$toString(level=level+1, prob=childProb), sep='\n')
                         }
                         return(displayedTree)
+                      },
+                      getNodes = function() {
+                        nodes <- .self
+                        for(child in children) {
+                          nodes <- append(nodes, child$getNodes())
+                        }
+                        return(nodes)
+                      },
+                      getEdges = function() {
+                        edges <- data.frame()
+                        for(i in seq_along(children)) {
+                          child <- children[[i]]
+                          if (length(probs) > 1) {
+                            prob <- probs[[i]]
+                          } else {
+                            prob <- paste0(probs, '[', i, ']')
+                          }
+                          edges <- rbind(edges, data.frame(from=name, to=child$name, label=prob, stringsAsFactors = F))
+                          edges <- rbind(edges, child$getEdges())
+                        }
+                        return(edges)
+                      },
+                      display = function() {
+                        nodes <- getNodes()
+                        names <- sapply(nodes, function(n) n$name)
+                        nodes <- data.frame(id=names, label=names, stringsAsFactors = F)
+                        nodes$shape <- 'box'
+                        edges <- getEdges()
+                        edges$label <- ifelse(edges$label == '_', '#', edges$label)
+                        p <- visNetwork(nodes, edges) %>% 
+                          visEdges(arrows='to', length=200) %>% 
+                          visHierarchicalLayout(sortMethod = 'directed', nodeSpacing = 200) 
+                        print(p)
                       },
                       compareStrategies = function(..., context=list()) {
                         if (length(context) > 0) {
@@ -351,9 +385,10 @@ parseYAML <- function(filePath) {
   tree
 }
 
-N <- 10000
+N <- 100
 
 conventional <- parseYAML('conventional.yaml')
+conventional$display()
 conventional_hpv16la <- parseYAML('conventional_hpv16la.yaml')
 
 generateContext <- function(N) {
