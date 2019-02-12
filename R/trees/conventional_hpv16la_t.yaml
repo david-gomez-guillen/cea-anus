@@ -10,4 +10,4 @@ cytology_hpv16la:
         utility: u_cyto_benign
     # Otherwise
     - hra:
-        include: '_hra_followup.yaml'
+        include: '_hra_treatment.yaml'

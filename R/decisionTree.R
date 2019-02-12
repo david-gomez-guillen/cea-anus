@@ -27,12 +27,12 @@ Node <- setRefClass('Node',
                           actualChildrenProbs <- parseNodeValue(actualChildrenProbs, context)
                         } else {
                           actualChildrenProbs <- sapply(actualChildrenProbs, function(p) {
-                            if (p == '_') return(p)
+                            if (p == '#') return(p)
                             else parseNodeValue(p, context)
                           }, USE.NAMES = FALSE)
                         }
-                        if (any(actualChildrenProbs == '_')) {
-                          actualChildrenProbs[actualChildrenProbs == '_'] = 1 - sum(as.numeric(actualChildrenProbs[actualChildrenProbs != '_']))
+                        if (any(actualChildrenProbs == '#')) {
+                          actualChildrenProbs[actualChildrenProbs == '#'] = 1 - sum(as.numeric(actualChildrenProbs[actualChildrenProbs != '#']))
                         } else {
                           actualChildrenProbs <- actualChildrenProbs / sum(actualChildrenProbs)
                         }
@@ -107,7 +107,7 @@ Node <- setRefClass('Node',
                       getUsedVariables = function() {
                         vars <- c(probs)
                         vars <- append(vars, c(info[['cost']], info[['utility']]))
-                        vars <- vars[vars != '_' & !is.na(vars) & suppressWarnings(is.na(as.numeric(vars)))]
+                        vars <- vars[vars != '#' & !is.na(vars) & suppressWarnings(is.na(as.numeric(vars)))]
                         for(child in children) {
                           vars <- c(vars, child$getUsedVariables())
                         }
@@ -184,26 +184,29 @@ Node <- setRefClass('Node',
                         edges <- data.frame()
                         for(i in seq_along(children)) {
                           child <- children[[i]]
-                          if (length(probs) > 1) {
-                            prob <- probs[[i]]
-                          } else {
-                            prob <- paste0(probs, '[', i, ']')
+                          label <- ''
+                          if (!is.null(child$info[['in_transition']])) {
+                            label <- paste0('[', child$info['in_transition'], ']\n')
                           }
-                          edges <- rbind(edges, data.frame(from=name, to=child$name, label=prob, stringsAsFactors = F))
+                          if (length(probs) > 1) {
+                            label <- paste0(label, probs[[i]])
+                          } else {
+                            label <- paste0(label, probs, '[', i, ']')
+                          }
+                          edges <- rbind(edges, data.frame(from=name, to=child$name, label=label, stringsAsFactors = F))
                           edges <- rbind(edges, child$getEdges())
                         }
                         return(edges)
                       },
-                      display = function() {
+                      display = function(spacing=400) {
                         nodes <- getNodes()
                         names <- sapply(nodes, function(n) n$name)
                         nodes <- data.frame(id=names, label=names, stringsAsFactors = F)
                         nodes$shape <- 'box'
                         edges <- getEdges()
-                        edges$label <- ifelse(edges$label == '_', '#', edges$label)
                         p <- visNetwork(nodes, edges) %>% 
                           visEdges(arrows='to', length=200) %>% 
-                          visHierarchicalLayout(sortMethod = 'directed', nodeSpacing = 200) 
+                          visHierarchicalLayout(sortMethod = 'directed', nodeSpacing = spacing) 
                         print(p)
                       },
                       compareStrategies = function(..., context=list()) {
@@ -322,6 +325,7 @@ Node <- setRefClass('Node',
                     ))
 
 parseYAML <- function(filePath) {
+  treeDir <- dirname(filePath)
   treeSpec <- yaml.load_file(filePath)
   nodes <- list()
   childrenNodes <- c()
@@ -329,6 +333,7 @@ parseYAML <- function(filePath) {
   parseProbs <- function(probStr) {
     pbs <- strsplit(probStr, ',')[[1]]
     pbs <- trimws(pbs)
+    pbs <- ifelse(pbs=='_', '#', pbs)
     return(pbs)
   }
   
@@ -352,11 +357,12 @@ parseYAML <- function(filePath) {
         isIncluded <- 'include' %in% names(child[[1]]) && 
           !is.null(child[[1]][['include']]) && 
           !is.na(child[[1]][['include']])
+        childNode <- parseNode(child)
+        info <- childNode$info
         if (isIncluded) {
-          childNode <- parseYAML(child[[1]]['include'][[1]])
-        } else {
-          childNode <- parseNode(child)
+          childNode <- parseYAML(paste0(treeDir, '/', child[[1]]['include'][[1]]))
         }
+        childNode$info <- modifyList(childNode$info, info)
         childrenNodes <- append(childrenNodes, as.list(child)$name)
         childNode
       })
@@ -384,68 +390,3 @@ parseYAML <- function(filePath) {
   
   tree
 }
-
-N <- 100
-
-conventional <- parseYAML('conventional.yaml')
-conventional$display()
-conventional_hpv16la <- parseYAML('conventional_hpv16la.yaml')
-
-generateContext <- function(N) {
-  context <- list(
-    p_cyto_benign=runif(N,.7,.9),
-    p_cyto_hpv16la_benign=runif(N, .7, .9),
-    p_no_hsil=runif(N,.8,.9),
-    p_hsil=runif(N,.1,.2),
-    p_regression=runif(N,.4,.6),
-    p_cyto_benign_hpv16_neg=runif(N,.7,.8),
-    p_cyto_benign_hpv1618_neg=runif(N,.7,.75), # Beware probability consistency!
-    p_cyto_benign_hpvhr_neg=runif(N,.75,.8),
-    p_cyto_benign_ascus_lsil_arnm_neg=runif(N,.7,.8),
-    
-    dist_hra = rdirichlet(N, c(60, 3, 1)),
-    
-    c_cyto = runif(N, 200, 400),
-    c_cyto_hpv16la = runif(N, 200, 400),
-    c_followup = runif(N, 1000, 2000),
-    c_hra = runif(N, 20000, 30000),
-    c_surgery = runif(N, 10000, 20000),
-    
-    u_cyto_benign = runif(N, .9, 1),
-    u_no_hsil = runif(N, .8, .9),
-    u_hsil = runif(N, .7, .8),
-    u_surgery = runif(N, .3, .6)
-  )
-  return(context)
-}
-
-# conventional$compareStrategies(alternatives=list(
-#                                 hpv16la=conventional_hpv16la
-#                                ),
-#                                context=generateContext(N))
-
-# profvis({
-  # cat(conventional$toString())
-  # conventional$getNetHealthBenefit(wtp=30000, context)
-  # conventional$getUsedVariables()
-  # conventional_hpv16la$getExpectedCost(context)
-  # conventional$getExpectedEffectiveness(context)
-  # conventional$getCostEffectiveness(context)
-# })
-
-# profvis({
-  context <- generateContext(N)
-  results <- conventional$runIterations(context=context, 'name')
-  N_surgery <- length(results[results %in% c('surgery', 'followup_surgery')])
-  
-  context <- generateContext(N-N_surgery)
-  context[['p_cyto_benign']] <- runif(N-N_surgery,.8,.95)
-  results <- conventional$runIterations(context=context)
-  N_surgery <- N_surgery + length(results[results %in% c('surgery', 'followup_surgery')])
-  
-  
-  context <- generateContext(N-N_surgery)
-  context[['p_cyto_benign']] <- runif(N-N_surgery,.9,1)
-  results <- conventional$runIterations(context=context)
-  N_surgery <- N_surgery + length(results[results %in% c('surgery', 'followup_surgery')])
-# })

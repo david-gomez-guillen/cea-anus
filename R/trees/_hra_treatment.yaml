@@ -8,7 +8,7 @@ hra:
         description: Annual followup after HRA
         cost: c_followup
         utility: u_no_hsil
-    # HSIL in HRA or cytology
+    # HRA no HSIL, cytology HSIL or ASC-H
     - semestral_followup:
         description: Semestral followup after HSIL on HRA
         cost: c_followup
@@ -21,6 +21,22 @@ hra:
               utility: u_hsil
           # Invasive cancer
           - followup_surgery:
+              description: Colorrectal surgery
+              cost: c_surgery
+              utility: u_surgery
+    # HRA HSIL
+    - irc_semestral_followup:
+        description: Semestral followup after HSIL on HRA
+        cost: c_irc_followup
+        probs: p_irc_regression,_
+        children:
+          # No HSIL in HRA, cytology (two consecutive followups)
+          - irc_regression_annual_followup:
+              description: Annual followup after regression
+              cost: c_followup
+              utility: u_hsil
+          # Invasive cancer
+          - irc_followup_surgery:
               description: Colorrectal surgery
               cost: c_surgery
               utility: u_surgery
