@@ -9,7 +9,7 @@ cytology:
         description: Annual followup after cytology
         cost: c_followup
         utility: u_cyto_benign
-    # Cyto ASCUS, LSIL, ASC-H, HSIL
+    # Cyto not benign
     - hra:
-        in_transition: cyto ASCUS, LSIL, ASC-H, HSIL
+        in_transition: cyto is not benign
         include: '_hra_followup.yaml'

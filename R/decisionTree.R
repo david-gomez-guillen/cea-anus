@@ -5,9 +5,10 @@ library(dirmult)
 library(yaml)
 library(profvis)
 library(visNetwork)
+library(xlsx)
 
 Node <- setRefClass('Node',
-                    fields=c('name', 'info', 'probs', 'children'),
+                    fields=c('id', 'name', 'info', 'probs', 'children'),
                     methods=list(
                       parseNodeValue = function(value, context=list()) {
                         if (length(value) > 0 && 
@@ -186,14 +187,14 @@ Node <- setRefClass('Node',
                           child <- children[[i]]
                           label <- ''
                           if (!is.null(child$info[['in_transition']])) {
-                            label <- paste0('[', child$info['in_transition'], ']\n')
+                            label <- paste(strwrap(child$info['in_transition'], 20), collapse='\n')
                           }
                           if (length(probs) > 1) {
-                            label <- paste0(label, probs[[i]])
+                            label <- paste0(label, '\n[', probs[[i]], ']')
                           } else {
-                            label <- paste0(label, probs, '[', i, ']')
+                            label <- paste0(label, '\n[', probs, '(', i, ')', ']')
                           }
-                          edges <- rbind(edges, data.frame(from=name, to=child$name, label=label, stringsAsFactors = F))
+                          edges <- rbind(edges, data.frame(from=id, to=child$id, label=label, stringsAsFactors = F))
                           edges <- rbind(edges, child$getEdges())
                         }
                         return(edges)
@@ -201,11 +202,13 @@ Node <- setRefClass('Node',
                       display = function(spacing=400) {
                         nodes <- getNodes()
                         names <- sapply(nodes, function(n) n$name)
-                        nodes <- data.frame(id=names, label=names, stringsAsFactors = F)
+                        ids <- sapply(nodes, function(n) n$id)
+                        nodes <- data.frame(id=ids, label=names, stringsAsFactors = F)
                         nodes$shape <- 'box'
                         edges <- getEdges()
                         p <- visNetwork(nodes, edges) %>% 
                           visEdges(arrows='to', length=200) %>% 
+                          visIgraphLayout() %>%
                           visHierarchicalLayout(sortMethod = 'directed', nodeSpacing = spacing) 
                         print(p)
                       },
@@ -324,7 +327,7 @@ Node <- setRefClass('Node',
                       }
                     ))
 
-parseYAML <- function(filePath) {
+parseYAML <- function(filePath, nextId=0) {
   treeDir <- dirname(filePath)
   treeSpec <- yaml.load_file(filePath)
   nodes <- list()
@@ -343,9 +346,11 @@ parseYAML <- function(filePath) {
     attributes <- names(node)
     attributes <- attributes[!attributes %in% c('name', 'children', 'probs', 'include')]
     
-    newNode <- Node(name=name,
+    newNode <- Node(id=nextId,
+                    name=name,
                     info=list(),
                     probs=node$probs)
+    nextId <<- nextId + 1
     
     for(val in attributes) {
       newNode$info[val] <- node[val]
@@ -360,7 +365,7 @@ parseYAML <- function(filePath) {
         childNode <- parseNode(child)
         info <- childNode$info
         if (isIncluded) {
-          childNode <- parseYAML(paste0(treeDir, '/', child[[1]]['include'][[1]]))
+          childNode <- parseYAML(paste0(treeDir, '/', child[[1]]['include'][[1]]), nextId=nextId)
         }
         childNode$info <- modifyList(childNode$info, info)
         childrenNodes <- append(childrenNodes, as.list(child)$name)
@@ -390,3 +395,18 @@ parseYAML <- function(filePath) {
   
   tree
 }
+
+parseExcel <- function(filePath) {
+  wb <- loadWorkbook(filePath)
+  sheetnames <- names(getSheets(wb))
+  
+  nodes <- read.xlsx(filePath, sheetName = 'nodes')
+  
+  edge_sheets <- sheetnames[startsWith(sheetnames, 'edges')]
+  for (net in edge_sheets) {
+    edges <- read.xlsx(filePath, sheetName = net)
+    # TODO
+  }
+}
+
+# parseExcel('trees/test.xlsx')

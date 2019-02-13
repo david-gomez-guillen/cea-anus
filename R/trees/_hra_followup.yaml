@@ -5,13 +5,13 @@ hra:
   children:
     # HRA, cytology no HSIL
     - hra_annual_followup:
-        in_transition: AAR, cyto no HSIL
+        in_transition: HRA, cyto no HSIL
         description: Annual followup after HRA
         cost: c_followup
         utility: u_no_hsil
     # HSIL in HRA or cytology
     - semestral_followup:
-        in_transition: HSIL in AAR or cyto
+        in_transition: HSIL in HRA or cyto
         description: Semestral followup after HSIL on HRA
         cost: c_followup
         probs: p_regression,_

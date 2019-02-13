@@ -5,9 +5,11 @@ cytology:
   children:
     # Cyto benign
     - annual_followup:
+        in_transition: cyto is benign
         description: Annual followup after cytology
         cost: c_followup
         utility: u_cyto_benign
     # Cyto not benign
     - hra:
+        in_transition: cyto is not benign
         include: '_hra_treatment.yaml'
