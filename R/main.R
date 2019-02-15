@@ -7,7 +7,7 @@ for(f in list.files('./trees')) {
     print(name)
     t <- parseYAML(paste0('trees/',f))
     assign(name, t)
-    trees[name] <- t
+    trees[[name]] <- t
   }
 }
 
@@ -59,23 +59,42 @@ N <- 1000
 #                                ),
 #                                context=generateContext(N))
 
-print(CEAsummary)
+# print(CEAsummary)
 
 # profvis(
   for (tree_name in names(trees)) {
       t <- trees[[tree_name]]
       context <- generateContext(N, year=1)
-      results <- conventional$runIterations(context=context, 'name')
+      results <- conventional$runIterations(context=context, attribute='name')
       N_hra <- length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
 
       context <- generateContext(N-N_hra, year=2)
-      results <- conventional$runIterations(context=context)
+      results <- conventional$runIterations(context=context, attribute='name')
       N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
 
       context <- generateContext(N-N_hra, year=3)
-      results <- conventional$runIterations(context=context)
+      results <- conventional$runIterations(context=context, attribute='name')
       N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
       cat(paste0(tree_name, ': ', N_hra, ' out of ', N, '\n'))
   }
 # )
 
+
+
+
+
+
+
+
+
+setwd("C:/Users/David/Dropbox/ICO/project_backups/modeling/anus/R")
+
+mkv <- parseExcel('trees/markov_test.xlsx')
+N <- 1000
+end <- mkv$runIterations(context=list(
+  p_hc=rep(.3, N), 
+  p_hd=rep(.1, N), 
+  p_ch=rep(.3, N), 
+  p_cd=rep(.6, N)), 
+  max.steps = 1, attribute = 'name')
+print(table(end))

@@ -32,11 +32,17 @@ Node <- setRefClass('Node',
                             else parseNodeValue(p, context)
                           }, USE.NAMES = FALSE)
                         }
+                        
                         if (any(actualOutProbs == '#')) {
                           actualOutProbs[actualOutProbs == '#'] = 1 - sum(as.numeric(actualOutProbs[actualOutProbs != '#']))
-                        } else {
-                          actualOutProbs <- actualOutProbs / sum(actualOutProbs)
-                        }
+                          actualOutProbs <- as.numeric(actualOutProbs)
+                        } 
+                        
+                        EPSILON <- .01
+                        if (abs(1 - sum(actualOutProbs)) > EPSILON) {
+                          stop(paste0('Probabilities from node "', name, '" don\'t add up to one'))
+                        } 
+                        
                         return(actualOutProbs)
                       },
                       getExpectedMeasure = function(measure, context=list(), use.only.leaves=FALSE) {
@@ -114,7 +120,7 @@ Node <- setRefClass('Node',
                         }
                         return(vars[!duplicated(vars)])
                       },
-                      runIterations = function(context=list(), attribute=NULL) {
+                      runIterations = function(context=list(), max.steps=100, attribute=NULL) {
                         if (length(context) == 0) {
                           num_simulations <- 1
                         } else if (is.matrix(context[[1]])) {
@@ -130,7 +136,7 @@ Node <- setRefClass('Node',
                               v[[i]]
                             }
                           })
-                          iterResults <- as.environment(runIteration(context=iterationContext))
+                          iterResults <- as.environment(runIteration(context=iterationContext, max.steps=max.steps))
                           return(iterResults)
                         })
                         if (!is.null(attribute)) {
@@ -138,14 +144,16 @@ Node <- setRefClass('Node',
                         }
                         return(results)
                       },
-                      runIteration = function(context=list()) {
-                        if (length(out) == 0) {
+                      runIteration = function(context=list(), max.steps=100, step=0) {
+                        if (length(out) == 0 || 
+                            step == max.steps || 
+                            any(probs==1)) {
                           return(.self)
                         }
                         else {
                           pbs <- parseProbs(context)
                           randomChildIndex <- sample(length(pbs), size=1, prob=pbs)
-                          return(out[[randomChildIndex]]$runIteration(context))
+                          return(out[[randomChildIndex]]$runIteration(context, step=step+1, max.steps=max.steps))
                         }
                       },
                       toString = function(level = 0, prob = NULL) {
@@ -192,41 +200,49 @@ Node <- setRefClass('Node',
                         }
                         return(nodes)
                       },
-                      getEdgeDisplayInfo = function() {
-                        edges <- .getEdgeDisplayInfo()
+                      getEdgeDisplayInfo = function(context=NULL) {
                         nodes <- getNodes()
+                        for(node in nodes)
+                          node$info['visited'] <- NULL
+                        
+                        edges <- .getEdgeDisplayInfo(context)
                         for(node in nodes)
                           node$info['visited'] <- NULL
                         return(edges)
                       },
-                      .getEdgeDisplayInfo = function() {
+                      .getEdgeDisplayInfo = function(context=NULL) {
                         if (!is.null(.self$info[['visited']]))
                           return(list())
                         .self$info['visited'] <- TRUE
                         edges <- data.frame()
+                        if (!is.null(context)) {
+                          actualProbs <- parseProbs(context)
+                        } else {
+                          actualProbs <- probs
+                        }
                         for(i in seq_along(out)) {
                           child <- out[[i]]
                           label <- ''
                           if (!is.null(child$info[['in_transition']])) {
                             label <- paste(strwrap(child$info['in_transition'], 20), '\n', collapse='\n')
                           }
-                          if (length(probs) > 1) {
-                            if (probs[[i]] == 0) next  # If prob=0 we don't draw the edge
-                            label <- paste0(label, '[', probs[[i]], ']')
+                          if (length(actualProbs) > 1) {
+                            if (actualProbs[[i]] == 0) next  # If prob=0 we don't draw the edge
+                            label <- paste0(label, '[', actualProbs[[i]], ']')
                           } else {
-                            label <- paste0(label, '[', probs, '(', i, ')', ']')
+                            label <- paste0(label, '[', actualProbs, '(', i, ')', ']')
                           }
                           edges <- rbind(edges, data.frame(from=id, to=child$id, label=label, stringsAsFactors = F))
-                          edges <- rbind(edges, child$.getEdgeDisplayInfo())
+                          edges <- rbind(edges, child$.getEdgeDisplayInfo(context))
                         }
                         return(edges)
                       },
-                      show = function(spacing=400) {
+                      show = function(context=NULL, spacing=400) {
                         nodes <- getNodes()
                         names <- sapply(nodes, function(n) n$name)
                         ids <- sapply(nodes, function(n) n$id)
                         nodes <- data.frame(id=ids, label=names, stringsAsFactors = F)
-                        edges <- getEdgeDisplayInfo()
+                        edges <- getEdgeDisplayInfo(context)
                         if (info[['model']] == 'tree') {
                           nodes$shape <- 'box'
                           p <- visNetwork(nodes, edges) %>% 
@@ -397,30 +413,17 @@ parseYAML <- function(filePath, nextId=0) {
           childNode <- parseYAML(paste0(treeDir, '/', child[[1]]['include'][[1]]), nextId=nextId)
         }
         childNode$info <- modifyList(childNode$info, info)
-        # childrenNodes <- append(childrenNodes, as.list(out)$name)
         childNode
       })
       names(newNode$out) <- lapply(newNode$out, function(child) {child$name})
     } else {
       newNode$probs <- numeric(0)
       newNode$out <- list()
-      # childrenNodes <- NA
     }
-    # nodes[[node$name]] <- childrenNodes
     newNode
   }
   
   tree <- parseNode(treeSpec)
-  
-  # connectionMatrix <- matrix(data=0, nrow=length(nodes), ncol=length(nodes), dimnames = list(names(nodes), names(nodes)))
-  # for(node in names(nodes)) {
-  #   if (!is.na(nodes[[node]])) {
-  #     for(neighbour in nodes[[node]]) {
-  #       connectionMatrix[node, neighbour] <- 1
-  #       connectionMatrix[neighbour, node] <- 1
-  #     }
-  #   }
-  # }
   
   tree
 }
@@ -435,48 +438,6 @@ parseExcel <- function(filePath) {
     pbs <- ifelse(pbs=='_', '#', pbs)
     return(pbs)
   }
-  
-  # parseNode <- function(node) {
-  #   name <- names(node)
-  #   node <- node[[1]]
-  #   attributes <- names(node)
-  #   attributes <- attributes[!attributes %in% c('name', 'out', 'probs', 'include')]
-  #   
-  #   newNode <- Node(id=nextId,
-  #                   name=name,
-  #                   info=list(),
-  #                   probs=node$probs)
-  #   nextId <<- nextId + 1
-  #   
-  #   for(val in attributes) {
-  #     newNode$info[val] <- node[val]
-  #   }
-  #   newNode$info['model'] <- 'markov'
-  #   
-  #   if (length(node$out) > 0) {
-  #     newNode$probs <- parseProbs(node$probs)
-  #     newNode$out <- lapply(node$out, function(child) {
-  #       isIncluded <- 'include' %in% names(child[[1]]) && 
-  #         !is.null(child[[1]][['include']]) && 
-  #         !is.na(child[[1]][['include']])
-  #       childNode <- parseNode(child)
-  #       info <- childNode$info
-  #       if (isIncluded) {
-  #         childNode <- parseYAML(paste0(treeDir, '/', child[[1]]['include'][[1]]), nextId=nextId)
-  #       }
-  #       childNode$info <- modifyList(childNode$info, info)
-  #       # childrenNodes <- append(childrenNodes, as.list(child)$name)
-  #       childNode
-  #     })
-  #     names(newNode$out) <- lapply(newNode$out, function(child) {child$name})
-  #   } else {
-  #     newNode$probs <- numeric(0)
-  #     newNode$out <- list()
-  #     # childrenNodes <- NA
-  #   }
-  #   # nodes[[node$name]] <- childrenNodes
-  #   newNode
-  # }
   
   nodeInfo <- read.xlsx(filePath, sheetName = 'nodes', stringsAsFactors=F)
   
@@ -509,5 +470,3 @@ parseExcel <- function(filePath) {
     return(nodes[[1]])
   }
 }
-
-mkv <- parseExcel('trees/test.xlsx')
