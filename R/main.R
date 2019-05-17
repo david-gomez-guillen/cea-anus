@@ -1,11 +1,12 @@
-source('decisionTree.R')
+library(CEAModel)
+library(dirmult)
 
 trees <- list()
 for(f in list.files('./trees')) {
   if (!startsWith(f, '_') && endsWith(f, '.yaml')) {
     name <- substr(f,1,(nchar(f) - 5))
     print(name)
-    t <- parseYAML(paste0('trees/',f))
+    t <- loadDecisionTree(paste0('trees/',f))
     assign(name, t)
     trees[[name]] <- t
   }
@@ -50,51 +51,48 @@ generateContext <- function(N, year=1) {
 
 N <- 1000
 
-# CEAsummary<- conventional$compareStrategies(alternatives=list(
-#                                 hpv16=conventional_hpv16la,
-#                                 hpv1618=conventional_hpv1618la,
-#                                 hpvhrla=conventional_hpvhrla,
-#                                 hpvhrhc=conventional_hpvhrhc,
-#                                 arnm=arnme6e7
-#                                ),
-#                                context=generateContext(N))
+CEAsummary<- conventional$compareStrategies(
+                                hpv16=conventional_hpv16la,
+                                hpv1618=conventional_hpv1618la,
+                                hpvhrla=conventional_hpvhrla,
+                                hpvhrhc=conventional_hpvhrhc,
+                                arnm=arnme6e7,
+                               context=generateContext(N))
 
-# print(CEAsummary)
+print(CEAsummary$plot)
 
 # profvis(
-  for (tree_name in names(trees)) {
-      t <- trees[[tree_name]]
-      context <- generateContext(N, year=1)
-      results <- conventional$runIterations(context=context, attribute='name')
-      N_hra <- length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
-
-      context <- generateContext(N-N_hra, year=2)
-      results <- conventional$runIterations(context=context, attribute='name')
-      N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
-
-      context <- generateContext(N-N_hra, year=3)
-      results <- conventional$runIterations(context=context, attribute='name')
-      N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
-      cat(paste0(tree_name, ': ', N_hra, ' out of ', N, '\n'))
-  }
+  # for (tree_name in names(trees)) {
+  #     t <- trees[[tree_name]]
+  #     context <- generateContext(N, year=1)
+  #     results <- conventional$runIterations(context=context, attribute='name')
+  #     N_hra <- length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
+  # 
+  #     context <- generateContext(N-N_hra, year=2)
+  #     results <- conventional$runIterations(context=context, attribute='name')
+  #     N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
+  # 
+  #     context <- generateContext(N-N_hra, year=3)
+  #     results <- conventional$runIterations(context=context, attribute='name')
+  #     N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
+  #     cat(paste0(tree_name, ': ', N_hra, ' out of ', N, '\n'))
+  # }
 # )
 
 
 
 
 
-
-
-
-
-setwd("C:/Users/David/Dropbox/ICO/project_backups/modeling/anus/R")
-
-mkv <- parseExcel('trees/markov_test.xlsx')
-N <- 1000
-end <- mkv$runIterations(context=list(
-  p_hc=rep(.3, N), 
-  p_hd=rep(.1, N), 
-  p_ch=rep(.3, N), 
-  p_cd=rep(.6, N)), 
-  max.steps = 1, attribute = 'name')
-print(table(end))
+# 
+# library(CEAModel)
+# library(dirmult)
+# 
+# mkv <- loadMarkovModel(normalizePath('./R/trees/markov_test.xlsx'))
+# N <- 1000
+# end <- mkv$runIterations(context=list(
+#   p_hc=rep(.3, N), 
+#   p_hd=rep(.1, N), 
+#   p_ch=rep(.3, N), 
+#   p_cd=rep(.6, N)), 
+#   max.steps = 1, attributes = 'name')
+# print(table(end$name))

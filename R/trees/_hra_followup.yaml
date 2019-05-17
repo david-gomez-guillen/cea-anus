@@ -8,7 +8,7 @@ hra:
         in_transition: HRA, cyto no HSIL
         description: Annual followup after HRA
         cost: c_followup
-        utility: u_no_hsil
+        outcome: u_no_hsil
     # HSIL in HRA or cytology
     - semestral_followup:
         in_transition: HSIL in HRA or cyto
@@ -21,16 +21,16 @@ hra:
               in_transition: regression
               description: Annual followup after regression
               cost: c_followup
-              utility: u_hsil
+              outcome: u_hsil
           # Invasive cancer
           - followup_surgery:
               in_transition: progression
               description: Colorrectal surgery
               cost: c_surgery
-              utility: u_surgery
+              outcome: u_surgery
     # Invasive cancer
     - surgery:
         in_transition: invasive cancer
         description: Colorrectal surgery
         cost: c_surgery
-        utility: u_surgery
+        outcome: u_surgery

@@ -8,7 +8,7 @@ cytology:
         in_transition: cyto is benign
         description: Annual followup after cytology
         cost: c_followup
-        utility: u_cyto_benign
+        outcome: u_cyto_benign
     # Cyto not benign
     - hra:
         in_transition: cyto is not benign

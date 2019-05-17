@@ -120,7 +120,7 @@ Node <- setRefClass('Node',
                         }
                         return(vars[!duplicated(vars)])
                       },
-                      runIterations = function(context=list(), max.steps=100, attribute=NULL) {
+                      runMarkovSimulation = function(context=list(), max.steps=100) {
                         if (length(context) == 0) {
                           num_simulations <- 1
                         } else if (is.matrix(context[[1]])) {
@@ -136,7 +136,7 @@ Node <- setRefClass('Node',
                               v[[i]]
                             }
                           })
-                          iterResults <- as.environment(runIteration(context=iterationContext, max.steps=max.steps))
+                          iterResults <- as.environment(.runSingleMarkovSimulation(context=iterationContext, max.steps=max.steps))
                           return(iterResults)
                         })
                         if (!is.null(attribute)) {
@@ -144,7 +144,7 @@ Node <- setRefClass('Node',
                         }
                         return(results)
                       },
-                      runIteration = function(context=list(), max.steps=100, step=0) {
+                      .runSingleMarkovSimulation = function(context=list(), max.steps=100, step=0) {
                         if (length(out) == 0 || 
                             step == max.steps || 
                             any(probs==1)) {
@@ -153,7 +153,43 @@ Node <- setRefClass('Node',
                         else {
                           pbs <- parseProbs(context)
                           randomChildIndex <- sample(length(pbs), size=1, prob=pbs)
-                          return(out[[randomChildIndex]]$runIteration(context, step=step+1, max.steps=max.steps))
+                          return(out[[randomChildIndex]]$.runSingleMarkovSimulation(context, step=step+1, max.steps=max.steps))
+                        }
+                      },
+                      runSimulation = function(context=list(), max.steps=100, attribute=NULL) {
+                        if (length(context) == 0) {
+                          num_simulations <- 1
+                        } else if (is.matrix(context[[1]])) {
+                          num_simulations <- nrow(context[[1]])
+                        } else {
+                          num_simulations <- length(context[[1]])
+                        }
+                        results <- lapply(seq(num_simulations), function(i) {
+                          iterationContext <- sapply(context, function(v) {
+                            if (is.matrix(v)) {
+                              v[i,]
+                            } else {
+                              v[[i]]
+                            }
+                          })
+                          iterResults <- as.environment(.runSingleSimulation(context=iterationContext, max.steps=max.steps))
+                          return(iterResults)
+                        })
+                        if (!is.null(attribute)) {
+                          results <- sapply(results, function(r) get(attribute, envir=r))
+                        }
+                        return(results)
+                      },
+                      .runSingleSimulation = function(context=list(), max.steps=100, step=0) {
+                        if (length(out) == 0 || 
+                            step == max.steps || 
+                            any(probs==1)) {
+                          return(.self)
+                        }
+                        else {
+                          pbs <- parseProbs(context)
+                          randomChildIndex <- sample(length(pbs), size=1, prob=pbs)
+                          return(out[[randomChildIndex]]$.runSingleSimulation(context, step=step+1, max.steps=max.steps))
                         }
                       },
                       toString = function(level = 0, prob = NULL) {
