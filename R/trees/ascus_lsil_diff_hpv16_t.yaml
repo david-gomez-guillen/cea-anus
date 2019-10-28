@@ -1,0 +1,28 @@
+cytology:
+  description: Cytology test
+  cost: c_cyto
+  probs: p_cyto_benign, p_cyto_ascus_lsil, _
+  children:
+    - annual_followup:
+        in_transition: cyto is benign
+        description: Annual followup after cytology
+        cost: c_followup
+        outcome: u_cyto_benign
+    - test:
+        in_transition: cyto ASCUS, LSIL
+        description: HPV16 (LA)
+        probs: p_hpv16_pos_cyto_ascus_lsil, _
+        children:
+          - hra:
+              in_transition: positive
+              description: HRA
+              include: '_hra_treatment.yaml'
+          - annual_followup:
+              in_transition: negative
+              description: Annual followup after cytology
+              cost: c_followup
+              outcome: u_cyto_benign
+    - hra:
+        in_transition: cyto ASC-H, HSIL
+        description: HRA
+        include: '_hra_treatment.yaml'

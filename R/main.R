@@ -9,6 +9,7 @@ for(f in list.files('./trees')) {
     t <- loadDecisionTree(paste0('trees/',f))
     assign(name, t)
     trees[[name]] <- t
+    # t$show(showProbs=F)
   }
 }
 
@@ -26,7 +27,9 @@ generateContext <- function(N, year=1) {
     p_cyto_benign_hpvhr_neg=runif(N,.75,.8),
     p_cyto_benign_hpvhrla_neg=runif(N,.75,.8),
     p_cyto_benign_hpvhrhc_neg=runif(N,.75,.8),
-    p_cyto_benign_ascus_lsil_arnm_neg=runif(N,.7,.8),
+    p_cyto_benign_ascus_lsil_arnm16_neg=runif(N,.7,.8),
+    p_cyto_benign_ascus_lsil_arnm1618_neg=runif(N,.7,.8),
+    p_cyto_benign_ascus_lsil_arnmhr_neg=runif(N,.7,.8),
     p_no_hsil=runif(N,.8,.9),
     p_hsil=runif(N,.1,.2),
     p_regression=runif(N,.4,.6),
@@ -41,58 +44,23 @@ generateContext <- function(N, year=1) {
     c_hra = runif(N, 20000, 30000),
     c_surgery = runif(N, 10000, 20000),
     
-    u_cyto_benign = runif(N, .9, 1),
-    u_no_hsil = runif(N, .8, .9),
+    u_cyto_benign = runif(N, .5, 1),
+    u_no_hsil = runif(N, .4, .9),
     u_hsil = runif(N, .7, .8),
     u_surgery = runif(N, .3, .6)
   )
   return(context)
 }
 
-N <- 1000
-
-CEAsummary<- conventional$compareStrategies(
+CEAsummary<- CEAModel::compareStrategies(
+                                conventional=conventional,
                                 hpv16=conventional_hpv16la,
                                 hpv1618=conventional_hpv1618la,
                                 hpvhrla=conventional_hpvhrla,
                                 hpvhrhc=conventional_hpvhrhc,
-                                arnm=arnme6e7,
+                                arnm_16=arnme6e7_hpv16,
+                                arnm_1618=arnme6e7_hpv1618,
+                                arnm_hr=arnme6e7_hpvhr,
                                context=generateContext(N))
 
 print(CEAsummary$plot)
-
-# profvis(
-  # for (tree_name in names(trees)) {
-  #     t <- trees[[tree_name]]
-  #     context <- generateContext(N, year=1)
-  #     results <- conventional$runIterations(context=context, attribute='name')
-  #     N_hra <- length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
-  # 
-  #     context <- generateContext(N-N_hra, year=2)
-  #     results <- conventional$runIterations(context=context, attribute='name')
-  #     N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
-  # 
-  #     context <- generateContext(N-N_hra, year=3)
-  #     results <- conventional$runIterations(context=context, attribute='name')
-  #     N_hra <- N_hra + length(results[results %in% c('hra_annual_followup', 'regression_annual_followup', 'followup_surgery', 'surgery')])
-  #     cat(paste0(tree_name, ': ', N_hra, ' out of ', N, '\n'))
-  # }
-# )
-
-
-
-
-
-# 
-# library(CEAModel)
-# library(dirmult)
-# 
-# mkv <- loadMarkovModel(normalizePath('./R/trees/markov_test.xlsx'))
-# N <- 1000
-# end <- mkv$runIterations(context=list(
-#   p_hc=rep(.3, N), 
-#   p_hd=rep(.1, N), 
-#   p_ch=rep(.3, N), 
-#   p_cd=rep(.6, N)), 
-#   max.steps = 1, attributes = 'name')
-# print(table(end$name))
