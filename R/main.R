@@ -1,66 +1,80 @@
 library(CEAModel)
-library(dirmult)
+library(ggplot2)
+library(reshape2)
+library(plotly)
+# library(dirmult)
 
 trees <- list()
-for(f in list.files('./trees')) {
+for(f in list.files('./R/models')) {
   if (!startsWith(f, '_') && endsWith(f, '.yaml')) {
     name <- substr(f,1,(nchar(f) - 5))
     print(name)
-    t <- loadDecisionTree(paste0('trees/',f))
+    t <- loadDecisionTree(paste0('R/models/',f))
     assign(name, t)
     trees[[name]] <- t
     # t$show(showProbs=F)
   }
 }
 
-generateContext <- function(N, year=1) {
-  context <- list(
-    p_cyto_benign=switch(year,
-                         '1'=runif(N,.7,.9),
-                         '2'=runif(N,.8,.95),
-                         '3'=runif(N,.9,1)),
-    p_cyto_hpv16la_benign=runif(N, .7, .9),
-    p_cyto_benign_hpv16_neg=runif(N,.7,.8),
-    p_cyto_benign_hpv16la_neg=runif(N,.7,.8),
-    p_cyto_benign_hpv1618_neg=runif(N,.7,.75), # Beware probability consistency!
-    p_cyto_benign_hpv1618la_neg=runif(N,.7,.75), # Beware probability consistency!
-    p_cyto_benign_hpvhr_neg=runif(N,.75,.8),
-    p_cyto_benign_hpvhrla_neg=runif(N,.75,.8),
-    p_cyto_benign_hpvhrhc_neg=runif(N,.75,.8),
-    p_cyto_benign_ascus_lsil_arnm16_neg=runif(N,.7,.8),
-    p_cyto_benign_ascus_lsil_arnm1618_neg=runif(N,.7,.8),
-    p_cyto_benign_ascus_lsil_arnmhr_neg=runif(N,.7,.8),
-    p_no_hsil=runif(N,.8,.9),
-    p_hsil=runif(N,.1,.2),
-    p_regression=runif(N,.4,.6),
+markov <- loadMarkovModels('R/models/markov.xlsx')
+
+ctx <- loadContextFile('R/models/context.xlsx')
+
+
+
+N.YEARS <- 40
+
+results.df <- data.frame()
+for(tree in trees) {
+  outcomes <- tree$calculateOutcomes(ctx)
+  ctx$p_cancer <- outcomes[outcomes$name=='surgery','prob'] * ctx$p_surgery_cancer
+  ctx$c_healthy <- weighted.mean(outcomes$cost, outcomes$prob)
+  costs <- c(ctx$c_healthy, ctx$c_cancer, ctx$c_survive, 0, 0)
+  utilities <- c(ctx$u_healthy, ctx$u_cancer, ctx$u_survive, 0, 0)
+  tpMatrix <- markov$evaluateTpMatrix(ctx)
+  
+  overall.cost <- 0
+  overall.qalys <- 0
+  state <- c(1, 0, 0, 0, 0)
+  names(state) <- sapply(markov$nodes, function(n) n$name)
+  states <- data.frame(t(state))
+  for(year in seq(N.YEARS)) {
+    state <- state %*% tpMatrix
+    overall.cost <- overall.cost + sum(state * costs)
+    overall.qalys <- overall.qalys + sum(state * utilities)
     
-    dist_hra = rdirichlet(N, c(60, 3, 1)),
-    
-    c_cyto = runif(N, 200, 400),
-    c_cyto_hpvla = runif(N, 200, 400),
-    c_cyto_hpvhc = runif(N, 100, 300),
-    c_cyto_arnm = runif(N, 300, 500),
-    c_followup = runif(N, 1000, 2000),
-    c_hra = runif(N, 20000, 30000),
-    c_surgery = runif(N, 10000, 20000),
-    
-    u_cyto_benign = runif(N, .5, 1),
-    u_no_hsil = runif(N, .4, .9),
-    u_hsil = runif(N, .7, .8),
-    u_surgery = runif(N, .3, .6)
-  )
-  return(context)
+    states <- rbind(states, state)
+  }
+  # print(states)
+  # print(overall.cost)
+  # print(overall.qalys)
+  states$iteration <- row.names(states)
+  melted.states <- melt(states, id.vars='iteration')
+  
+  p <- ggplot(melted.states, aes(x=as.numeric(iteration), y=value, color=variable)) + 
+    geom_line() + 
+    ylim(0,1) + 
+    xlab('Year') + 
+    ylab('Cohort (%)')
+  print(ggplotly(p, main='a'))
+  
+  results.df <- rbind(results.df, data.frame(strategy=tree$name,
+                                       C=overall.cost,
+                                       E=overall.qalys, stringsAsFactors = FALSE))
 }
 
-CEAsummary<- CEAModel::compareStrategies(
-                                conventional=conventional,
-                                hpv16=conventional_hpv16la,
-                                hpv1618=conventional_hpv1618la,
-                                hpvhrla=conventional_hpvhrla,
-                                hpvhrhc=conventional_hpvhrhc,
-                                arnm_16=arnme6e7_hpv16,
-                                arnm_1618=arnme6e7_hpv1618,
-                                arnm_hr=arnme6e7_hpvhr,
-                               context=generateContext(N))
+r <- CEAModel::compareStrategies(results.df)
 
-print(CEAsummary$plot)
+print(ggplotly(r$plot))
+# CEAsummary<- CEAModel::compareStrategies(
+#                                 conventional=conventional,
+#                                 hpv16=conventional_hpv16la,
+#                                 hpv1618=conventional_hpv1618la,
+#                                 hpvhrla=conventional_hpvhrla,
+#                                 hpvhrhc=conventional_hpvhrhc,
+#                                 arnm_16=arnme6e7_hpv16,
+#                                 arnm_1618=arnme6e7_hpv1618,
+#                                 arnm_hr=arnme6e7_hpvhr,
+#                                context=generateContext(N))
+# 
+# print(CEAsummary$plot)

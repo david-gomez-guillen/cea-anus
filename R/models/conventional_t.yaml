@@ -1,0 +1,24 @@
+cytology:
+  description: Cytology test
+  cost: c_cyto
+  probs: p_cyto_b,_
+  children:
+    # Cyto benign
+    - annual_followup:
+        in_transition: cyto is benign
+        description: Annual followup after cytology
+        probs: p_cancer__cyto_b, _
+        children:
+            - cancer:
+                in_transition: cancer
+                description: Cancer
+                outcome: ly_cancer__cyto_b
+            - no_cancer:
+                in_transition: no cancer
+                description: No cancer
+                outcome: ly_no_cancer__cyto_b
+    # Cyto not benign
+    - hra:
+        in_transition: cyto is not benign
+        include: '_hra_treatment.yaml'
+        suffix: 'cyto_not_b'

@@ -1,0 +1,46 @@
+cytology:
+  description: Cytology test
+  cost: c_cyto
+  probs: p_cyto_b, p_cyto_ascus_lsil, _
+  children:
+    - annual_followup:
+        in_transition: cyto is benign
+        description: Annual followup after cytology
+        probs: p_cancer__cyto_b, _
+        children:
+            - cancer:
+                in_transition: cancer
+                description: Cancer
+                outcome: ly_cancer__cyto_b
+            - no_cancer:
+                in_transition: no cancer
+                description: No cancer
+                outcome: ly_no_cancer__cyto_b
+    - test:
+        in_transition: cyto ASCUS, LSIL
+        description: HPV-HR (LA)
+        probs: p_hpvhrla_p__cyto_ascus_lsil, _
+        children:
+          - hra:
+                in_transition: positive
+                description: HRA
+                include: '_hra_treatment.yaml'
+                suffix: 'cyto_ascus_lsil_hpvhrla_p'
+          - annual_followup:
+                in_transition: negative
+                description: Annual followup after cytology
+                probs: p_cancer__cyto_ascus_lsil_hpvhrla_n, _
+                children:
+                    - cancer:
+                        in_transition: cancer
+                        description: Cancer
+                        outcome: ly_cancer__cyto_ascus_lsil_hpvhrla_n
+                    - no_cancer:
+                        in_transition: no cancer
+                        description: No cancer
+                        outcome: ly_no_cancer__cyto_ascus_lsil_hpvrla_n
+    - hra:
+        in_transition: cyto ASC-H, HSIL
+        description: HRA
+        include: '_hra_treatment.yaml'
+        suffix: 'cyto_hsil'

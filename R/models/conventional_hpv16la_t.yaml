@@ -1,0 +1,24 @@
+cytology_hpv16la:
+  description: Cytology + HPV16 (LA) test
+  cost: c_cyto_hpvla
+  probs: p_cyto_b_hpv16la_n,_
+  children:
+    # Cyto benign and HPV16 negative
+    - annual_followup:
+        in_transition: cyto benign, hpv16 LA negative
+        description: Annual followup after test
+        probs: p_cancer__cyto_b_hpv16la_n, _
+        children:
+            - cancer:
+                in_transition: cancer
+                description: Cancer
+                outcome: ly_cancer__cyto_b_hpv16la_n
+            - no_cancer:
+                in_transition: no cancer
+                description: No cancer
+                outcome: ly_no_cancer__cyto_b_hpv16la_n
+    # Otherwise
+    - hra:
+        in_transition: otherwise
+        include: '_hra_treatment.yaml'
+        suffix: 'cyto_not_b_or_hpv16la_p'

@@ -1,0 +1,24 @@
+cytology_arnme6e7:
+  description: Cytology + ARNm E6/E7 (HPV-HR) test
+  cost: c_cyto_arnm
+  probs: p_cyto_b_ascus_lsil_arnmhr_n,_
+  children:
+    # Cyto benign, ASCUS, LSIL and ARNm E6/E7 negative
+    - annual_followup:
+        in_transition: cyto benign, ASCUS or LSIL, ARNm (HPV-HR) negative
+        description: Annual followup after test
+        probs: p_cancer__cyto_b_ascus_lsil_arnhr_n, _
+        children:
+            - cancer:
+                in_transition: cancer
+                description: Cancer
+                outcome: ly_cancer__cyto_b_ascus_lsil_arnhr_n
+            - no_cancer:
+                in_transition: no cancer
+                description: No cancer
+                outcome: ly_no_cancer__cyto_b_ascus_lsil_arnhr_n
+    # Otherwise
+    - hra:
+        in_transition: otherwise
+        include: '_hra_followup.yaml'
+        suffix: 'cyto_not_b_ascus_lsil_or_arnmhr_p'
