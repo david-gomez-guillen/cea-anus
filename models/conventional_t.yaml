@@ -1,6 +1,8 @@
 cytology:
   description: Cytology test
   cost: c_cyto
+  sensitivity: sensitivity_cyto
+  specificity: specificity_cyto
   probs: p_cyto_b,_
   children:
     # Cyto benign
@@ -20,5 +22,5 @@ cytology:
     # Cyto not benign
     - hra:
         in_transition: cyto is not benign
-        include: '_hra_followup.yaml'
+        include: '_hra_treatment.yaml'
         suffix: 'cyto_not_b'

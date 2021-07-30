@@ -1,6 +1,8 @@
 cytology_hpv16la:
   description: Cytology + HPV16 (LA) test
   cost: c_cyto_hpvla
+  sensitivity: sensitivity_cyto
+  specificity: specificity_cyto
   probs: p_cyto_b_hpv16la_n,_
   children:
     # Cyto benign and HPV16 negative

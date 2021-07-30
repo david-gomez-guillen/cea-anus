@@ -1,0 +1,15 @@
+test:
+  description: Test
+  cost: 1
+  sensitivity: p_cyto_a___cancer, p_cyto_b___cancer, _
+  specificity: p_cyto_no_a___no_cancer, p_cyto_no_b___no_cancer, _
+  children:
+    - a:
+        in_transition: a
+        description: A
+    - b:
+        in_transition: b
+        description: B
+    - c:
+        in_transition: c
+        description: C
