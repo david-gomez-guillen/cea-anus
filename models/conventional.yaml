@@ -1,9 +1,8 @@
 cytology:
   description: Cytology test
   cost: c_cyto
-  sensitivity: sensitivity_cyto
-  specificity: specificity_cyto
-  probs: p_cyto_b,_
+  sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer, _
+  specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer, _
   children:
     # Cyto benign
     - annual_followup:
@@ -18,8 +17,13 @@ cytology:
             - followup_no_cancer:
                 in_transition: no cancer
                 description: No cancer
-    # Cyto not benign
-    - hra:
-        in_transition: not benign
-        include: '_hra_followup.yaml'
-        suffix: 'cyto_not_b'
+    # Cyto HSIL
+    - hra___cyto_hsil:
+        in_transition: HSIL
+        include: '_hra_followup___cyto_hsil.yaml'
+        suffix: 'cyto_hsil'
+    # Cyto not benign nor HSIL
+    - hra___cyto_no_hsil:
+        in_transition: not benign, no HSIL
+        include: '_hra_followup___cyto_no_hsil.yaml'
+        suffix: 'cyto_not_b_no_hsil'

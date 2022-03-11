@@ -1,0 +1,32 @@
+hra:
+  description: High Resolution Anoscopy
+  cost: c_hra
+  sensitivity: sensitivity_hra___cyto_hsil
+  specificity: specificity_hra___cyto_hsil
+  children:
+    - surgery:
+        in_transition: invasive cancer
+        description: Colorrectal surgery
+        cost: c_surgery
+        sensitivity: 1
+        specificity: 1
+        children:
+            - surgery_cancer:
+                in_transition: cancer
+                description: Cancer
+            - surgery_no_cancer:
+                in_transition: no cancer
+                description: No cancer
+    - semestral_followup:
+        in_transition: no invasive cancer
+        description: Semestral followup
+        cost: c_followup
+        sensitivity: 1
+        specificity: 1
+        children:
+            - semestral_followup_cancer:
+                in_transition: cancer
+                description: Cancer
+            - semestral_followup_no_cancer:
+                in_transition: no cancer
+                description: No cancer
