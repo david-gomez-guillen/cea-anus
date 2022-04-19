@@ -58,245 +58,55 @@ setup.markov <- function(trees, strat.ctx, costs, utilities) {
     context.full <- strat.ctx[[stratum]]
     context <- lapply(context.full, function(e) e[1]) # Base values
     # Assign markov probabilities according to tree outcomes
-    if ('lynch' %in% names(trees)) {
-      prevalence <- strat.ctx[[stratum]]$.p_cancer___lynch
-      outcomes <- trees$lynch$summarize(context, prevalence=prevalence)
-      context$._p_hysterectomy_unnecessary_lynch <- outcomes[outcomes$name == 'no_cancer_hysterectomy', 'prob']
-      context$._p_hysterectomy_necessary_lynch <- outcomes[outcomes$name == 'cancer_removed', 'prob']
-      context$p_hysterectomy_lynch <- context$._p_hysterectomy_unnecessary_lynch + context$._p_hysterectomy_necessary_lynch
-      
-      cancer.states <- c('cancer', 'undetected_cancer_discharge', 'undetected_cancer_evaluation')
-      context$p_cancer_lynch <- sum(outcomes[outcomes$name %in% cancer.states, 'prob'])
-      context$p_cancer_lynch_s1 <- sum(outcomes[outcomes$name %in% 'cancer_removed', 'prob'])
-      context$p_cancer_lynch_s2 <- sum(outcomes[outcomes$name %in% 'cancer', 'prob']) * context$.p_cancer_stage_2 / p_cancer_s2_4
-      context$p_cancer_lynch_s3 <- sum(outcomes[outcomes$name %in% 'cancer', 'prob']) * context$.p_cancer_stage_3 / p_cancer_s2_4
-      context$p_cancer_lynch_s4 <- sum(outcomes[outcomes$name %in% 'cancer', 'prob']) * (1 - (context$.p_cancer_stage_2 +
-                                                                                                context$.p_cancer_stage_3) / p_cancer_s2_4)
-      
-      context$p_discharge <- 0 # Only discharged for three years in asymptomatic
-      context$p_death_cancer_lynch <- 0
-      lynch.cost <- weighted.mean(outcomes$cost, outcomes$prob)
-    } else {
-      context$p_hysterectomy_lynch <- 0
-      context$p_cancer_lynch <- 0
-      context$p_cancer_lynch_s1 <- 0
-      context$p_cancer_lynch_s2 <- 0
-      context$p_cancer_lynch_s3 <- 0
-      context$p_cancer_lynch_s4 <- 0
-      context$p_death_cancer_lynch <- 0
-      context$p_evaluation_bleeding_endo_thin <- 0
-      context$p_cancer_bleeding_endo_thin <- 0
-      context$p_hysterectomy_bleeding_endo_thin <- 0
-      lynch.cost <- 0
-    } 
-    if ('asymptomatic' %in% names(trees)) {
-      prevalence <- strat.ctx[[stratum]]$.p_cancer___asymptomatic
-      outcomes <- trees$asymptomatic$summarize(context, prevalence=prevalence)
-      strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_asymptomatic <- outcomes[outcomes$name == 'no_cancer_hysterectomy', 'prob']
-      strat.ctx[[stratum]]$._p_hysterectomy_necessary_asymptomatic <- outcomes[outcomes$name == 'cancer_removed', 'prob']
-      context$p_hysterectomy_asymptomatic <- strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_asymptomatic + strat.ctx[[stratum]]$._p_hysterectomy_necessary_asymptomatic
-      
-      cancer.states <- c('cancer', 'undetected_cancer_discharge', 'undetected_cancer_evaluation')
-      context$p_cancer_asymptomatic <- sum(outcomes[outcomes$name %in% cancer.states, 'prob'])
-      context$p_cancer_asymptomatic_s1 <- sum(outcomes[outcomes$name %in% 'cancer_removed', 'prob'])
-      context$p_cancer_asymptomatic_s2 <- sum(outcomes[outcomes$name %in% 'cancer', 'prob']) * context$.p_cancer_stage_2 / p_cancer_s2_4
-      context$p_cancer_asymptomatic_s3 <- sum(outcomes[outcomes$name %in% 'cancer', 'prob']) * context$.p_cancer_stage_3 / p_cancer_s2_4
-      context$p_cancer_asymptomatic_s4 <- sum(outcomes[outcomes$name %in% 'cancer', 'prob']) * (1 - (context$.p_cancer_stage_2 +
-                                                                                                       context$.p_cancer_stage_3) / p_cancer_s2_4)
-      
-      discharge.states <- c('no_cancer_discharge')
-      context$p_discharge <- sum(outcomes[outcomes$name %in% discharge.states, 'prob'])
-      context$p_death_cancer_asymptomatic <- 0
-      asymptomatic.cost <- weighted.mean(outcomes$cost, outcomes$prob)
-    } else {
-      context$p_hysterectomy_asymptomatic <- 0
-      context$p_cancer_asymptomatic <- 0
-      context$p_cancer_asymptomatic_s1 <- 0
-      context$p_cancer_asymptomatic_s2 <- 0
-      context$p_cancer_asymptomatic_s3 <- 0
-      context$p_cancer_asymptomatic_s4 <- 0
-      context$p_death_cancer_asymptomatic <- 0
-      context$p_evaluation_bleeding_endo_thin <- 0
-      context$p_cancer_bleeding_endo_thin <- 0
-      context$p_hysterectomy_bleeding_endo_thin <- 0
-      asymptomatic.cost <- 0
-    }
-    if ('bleeding' %in% names(trees)) {
-      prevalence <- strat.ctx[[stratum]]$.p_cancer___bleeding
-      outcomes <- trees$bleeding$summarize(context, prevalence=prevalence)
-      outcomes.undetected <- trees$bleeding$summarize(context, prevalence=1) # Outcomes for the previously undetected cancers (so prevalence=100%)
-      # TODO: Replicate for other populations
-      strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding <- outcomes[outcomes$name == 'no_cancer_hysterectomy', 'prob']
-      if (length(strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding) == 0)
-        strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding <- 0
-      strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding <- sum(outcomes[outcomes$name %in% c('cancer_removed', 'cancer_s1', 'cancer_s2', 'cancer_s3', 'cancer_s4'), 'prob'])
-      strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% c('cancer_removed', 'cancer_s1', 'cancer_s2', 'cancer_s3', 'cancer_s4'), 'prob'])
-      if (length(strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding) == 0)
-        strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding <- 0
-      context$p_hysterectomy_bleeding <- strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding
-      
-      cancer.states <- c('cancer', 
-                         'cancer_s1',
-                         'cancer_s2',
-                         'cancer_s3',
-                         'cancer_s4'
-                         # 'undetected_cancer_discharge', 
-                         # 'undetected_cancer_evaluation', 
-                         # 'undetected_cancer_evaluation_bleeding_endo_thin'
-                         )
-      context$p_cancer_bleeding <- sum(outcomes[outcomes$name %in% cancer.states, 'prob'])
-      if (length(context$p_cancer_bleeding) == 0) context$p_cancer_bleeding <- 0
-      context$p_cancer_bleeding_s1 <- sum(outcomes[outcomes$name %in% 'cancer_s1', 'prob'])
-      if (length(context$p_cancer_bleeding_s1) == 0) context$p_cancer_bleeding_s1 <- 0
-      context$p_cancer_bleeding_s2 <- sum(outcomes[outcomes$name %in% 'cancer_s2', 'prob'])
-      if (length(context$p_cancer_bleeding_s2) == 0) context$p_cancer_bleeding_s2 <- 0
-      context$p_cancer_bleeding_s3 <- sum(outcomes[outcomes$name %in% 'cancer_s3', 'prob'])
-      if (length(context$p_cancer_bleeding_s3) == 0) context$p_cancer_bleeding_s3 <- 0
-      context$p_cancer_bleeding_s4 <- sum(outcomes[outcomes$name %in% 'cancer_s4', 'prob'])
-      if (length(context$p_cancer_bleeding_s4) == 0) context$p_cancer_bleeding_s4 <- 0
-      
-      # Calculate probabilities for cancer detection in previously undetected cancers
-      context$p_cancer_bleeding_s1_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s1', 'prob'])
-      if (length(context$p_cancer_bleeding_s1_undetected) == 0) context$p_cancer_bleeding_s1_undetected <- 0
-      context$p_cancer_bleeding_s2_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s2', 'prob'])
-      if (length(context$p_cancer_bleeding_s2_undetected) == 0) context$p_cancer_bleeding_s2_undetected <- 0
-      context$p_cancer_bleeding_s3_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s3', 'prob'])
-      if (length(context$p_cancer_bleeding_s3_undetected) == 0) context$p_cancer_bleeding_s3_undetected <- 0
-      context$p_cancer_bleeding_s4_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s4', 'prob'])
-      if (length(context$p_cancer_bleeding_s4_undetected) == 0) context$p_cancer_bleeding_s4_undetected <- 0
-      context$p_cancer_bleeding_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% cancer.states, 'prob'])
-      if (length(context$p_cancer_bleeding_undetected) == 0) context$p_cancer_bleeding_undetected <- 0
-      
-      context$p_undetected_cancer_bleeding <- sum(outcomes[outcomes$name %in% c('undetected_cancer_discharge', 
-                                                                                'undetected_cancer_evaluation', 
-                                                                                'undetected_cancer_evaluation_bleeding_endo_thin'), 'prob'])
-      if (length(context$p_undetected_cancer_bleeding) == 0) context$p_undetected_cancer_bleeding <- 0
-      
-      context$p_discharge <- 0 # Only discharged for three years in asymptomatic
-      context$p_evaluation_bleeding_endo_thin <- outcomes[outcomes$name=='no_cancer_evaluation_bleeding_endo_thin', 'prob']
-      if (length(context$p_evaluation_bleeding_endo_thin) == 0) context$p_evaluation_bleeding_endo_thin <- 0
-      context$p_evaluation_bleeding_endo_thin_undetected <- outcomes.undetected[outcomes.undetected$name=='no_cancer_evaluation_bleeding_endo_thin', 'prob']
-      if (length(context$p_evaluation_bleeding_endo_thin_undetected) == 0) context$p_evaluation_bleeding_endo_thin_undetected <- 0
-      context$p_death_cancer_bleeding <- 0
-      bleeding.cost <- weighted.mean(outcomes$cost, outcomes$prob)
-      
-      if (trees$bleeding$name == 'tree_bleeding_current') {
-        # TODO: Generalize
-        tree_endo_thin <- tree_bleeding_current_endo_thin
-        tn <- outcomes[outcomes$name == 'no_cancer_evaluation_bleeding_endo_thin',]
-        fp <- outcomes[outcomes$name == 'undetected_cancer_evaluation_bleeding_endo_thin',]
-        prevalence <- fp / (fp + tn)
-        outcomes <- tree_endo_thin$summarize(context, prevalence=prevalence)
-        outcomes.undetected <- tree_endo_thin$summarize(context, prevalence=1) # Outcomes for the previously undetected cancers (so prevalence=100%)
-        strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding_endo_thin <- outcomes[outcomes$name == 'no_cancer_hysterectomy', 'prob']
-        strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding_endo_thin <- sum(outcomes[outcomes$name %in% c('cancer_removed', 'cancer_s1', 'cancer_s2', 'cancer_s3', 'cancer_s4'), 'prob'])
-        strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding_endo_thin_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% c('cancer_removed', 'cancer_s1', 'cancer_s2', 'cancer_s3', 'cancer_s4'), 'prob'])
-        context$p_hysterectomy_bleeding_endo_thin <- strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding_endo_thin #+ strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding_endo_thin
-        
-        # cancer.states <- c('cancer', 'undetected_cancer_discharge', 'undetected_cancer_evaluation')
-        context$p_cancer_bleeding_endo_thin <- sum(outcomes[outcomes$name %in% cancer.states, 'prob'])
-        context$p_cancer_bleeding_endo_thin_s1 <- sum(outcomes[outcomes$name %in% 'cancer_s1', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s2 <- sum(outcomes[outcomes$name %in% 'cancer_s2', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s3 <- sum(outcomes[outcomes$name %in% 'cancer_s3', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s4 <- sum(outcomes[outcomes$name %in% 'cancer_s4', 'prob'])
-        context$p_undetected_cancer_bleeding_endo_thin <- sum(outcomes[outcomes$name %in% c('undetected_cancer_discharge', 
-                                                                                            'undetected_cancer_evaluation', 
-                                                                                            'undetected_cancer_evaluation_bleeding_endo_thin'), 'prob'])
-        context$p_cancer_bleeding_endo_thin_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% cancer.states, 'prob'])
-        context$p_cancer_bleeding_endo_thin_s1_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s1', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s2_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s2', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s3_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s3', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s4_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s4', 'prob'])
-        
-        context$p_death_cancer_bleeding <- 0
-        bleeding.cost <- bleeding.cost + weighted.mean(outcomes$cost, outcomes$prob)
-      } else if (trees$bleeding$name == 'tree_bleeding_current2') {
-        # TODO: Generalize
-        tree_endo_thin2 <- tree_bleeding_current_endo_thin2
-        tn <- outcomes[outcomes$name == 'no_cancer_evaluation_bleeding_endo_thin','prob']
-        fp <- outcomes[outcomes$name == 'undetected_cancer_evaluation_bleeding_endo_thin','prob']
-        prevalence <- fp / (fp + tn)
-        outcomes <- tree_endo_thin2$summarize(context, prevalence=prevalence)
-        outcomes.undetected <- tree_endo_thin2$summarize(context, prevalence=1) # Outcomes for the previously undetected cancers (so prevalence=100%)
-        strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding_endo_thin <- outcomes[outcomes$name == 'no_cancer_hysterectomy', 'prob']
-        strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding_endo_thin <- sum(outcomes[outcomes$name %in% c('cancer_removed', 'cancer_s1', 'cancer_s2', 'cancer_s3', 'cancer_s4'), 'prob'])
-        strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding_endo_thin_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% c('cancer_removed', 'cancer_s1', 'cancer_s2', 'cancer_s3', 'cancer_s4'), 'prob'])
-        context$p_hysterectomy_bleeding_endo_thin <- strat.ctx[[stratum]]$._p_hysterectomy_unnecessary_bleeding_endo_thin #+ strat.ctx[[stratum]]$._p_hysterectomy_necessary_bleeding_endo_thin
-        
-        # cancer.states <- c('cancer', 'undetected_cancer_discharge', 'undetected_cancer_evaluation')
-        context$p_cancer_bleeding_endo_thin <- sum(outcomes[outcomes$name %in% cancer.states, 'prob'])
-        context$p_cancer_bleeding_endo_thin_s1 <- sum(outcomes[outcomes$name %in% 'cancer_s1', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s2 <- sum(outcomes[outcomes$name %in% 'cancer_s2', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s3 <- sum(outcomes[outcomes$name %in% 'cancer_s3', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s4 <- sum(outcomes[outcomes$name %in% 'cancer_s4', 'prob'])
-        context$p_undetected_cancer_bleeding_endo_thin <- sum(outcomes[outcomes$name %in% c('undetected_cancer_discharge', 
-                                                                                            'undetected_cancer_evaluation', 
-                                                                                            'undetected_cancer_evaluation_bleeding_endo_thin'), 'prob'])
-        context$p_cancer_bleeding_endo_thin_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% cancer.states, 'prob'])
-        context$p_cancer_bleeding_endo_thin_s1_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s1', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s2_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s2', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s3_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s3', 'prob'])
-        context$p_cancer_bleeding_endo_thin_s4_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s4', 'prob'])
-        
-        context$p_death_cancer_bleeding <- 0
-        bleeding.cost <- bleeding.cost + weighted.mean(outcomes$cost, outcomes$prob)
-      } else{
-        context$p_cancer_bleeding_endo_thin <- 0
-        context$p_cancer_bleeding_endo_thin_s1 <- 0
-        context$p_cancer_bleeding_endo_thin_s2 <- 0
-        context$p_cancer_bleeding_endo_thin_s3 <- 0
-        context$p_cancer_bleeding_endo_thin_s4 <- 0
-        context$p_cancer_bleeding_endo_thin_undetected <- 0
-        context$p_cancer_bleeding_endo_thin_s1_undetected <- 0
-        context$p_cancer_bleeding_endo_thin_s2_undetected <- 0
-        context$p_cancer_bleeding_endo_thin_s3_undetected <- 0
-        context$p_cancer_bleeding_endo_thin_s4_undetected <- 0
-        context$p_undetected_cancer_bleeding_endo_thin <- 0
-        context$p_hysterectomy_bleeding_endo_thin <- 0
-        context$._p_hysterectomy_unnecessary_bleeding_endo_thin <- 0
-        context$._p_hysterectomy_necessary_bleeding_endo_thin <- 0
-        context$._p_hysterectomy_necessary_bleeding_endo_thin_undetected <- 0
-      }
-    } else {
-      context$p_hysterectomy_bleeding <- 0
-      context$._p_hysterectomy_necessary_bleeding_undetected <- 0
-      context$p_hysterectomy_bleeding_endo_thin <- 0
-      context$._p_hysterectomy_necessary_bleeding_endo_thin_undetected <- 0
-      context$p_cancer_bleeding <- 0
-      context$p_cancer_bleeding_s1 <- 0
-      context$p_cancer_bleeding_s2 <- 0
-      context$p_cancer_bleeding_s3 <- 0
-      context$p_cancer_bleeding_s4 <- 0
-      context$p_cancer_bleeding_undetected <- 0
-      context$p_cancer_bleeding_s1_undetected <- 0
-      context$p_cancer_bleeding_s2_undetected <- 0
-      context$p_cancer_bleeding_s3_undetected <- 0
-      context$p_cancer_bleeding_s4_undetected <- 0
-      context$p_cancer_bleeding_endo_thin <- 0
-      context$p_cancer_bleeding_endo_thin_s1 <- 0
-      context$p_cancer_bleeding_endo_thin_s2 <- 0
-      context$p_cancer_bleeding_endo_thin_s3 <- 0
-      context$p_cancer_bleeding_endo_thin_s4 <- 0
-      context$p_cancer_bleeding_endo_thin_undetected <- 0
-      context$p_cancer_bleeding_endo_thin_s1_undetected <- 0
-      context$p_cancer_bleeding_endo_thin_s2_undetected <- 0
-      context$p_cancer_bleeding_endo_thin_s3_undetected <- 0
-      context$p_cancer_bleeding_endo_thin_s4_undetected <- 0
-      context$p_undetected_cancer_bleeding_endo_thin <- 0
-      context$p_death_cancer_bleeding <- 0
-      context$p_cancer_bleeding_endo_thin <- 0
-      bleeding.cost <- 0
-    }
+    prevalence <- strat.ctx[[stratum]]$p_cancer
+    outcomes <- trees$hiv_msm$summarize(context, prevalence=prevalence)
+    outcomes.undetected <- trees$hiv_msm$summarize(context, prevalence=1) # Outcomes for the previously undetected cancers (so prevalence=100%)
     
-    ####### TEMPORARY
-    context$p_bleeding <- 0
-    context$p_stop_bleeding <- 0
-    #######
+    cancer.states <- c('surgery_cancer'
+                       # 'cancer_s1',
+                       # 'cancer_s2',
+                       # 'cancer_s3',
+                       # 'cancer_s4'
+                       # 'undetected_cancer_discharge', 
+                       # 'undetected_cancer_evaluation', 
+                       # 'undetected_cancer_evaluation_bleeding_endo_thin'
+                       )
+    context$p_cancer <- sum(outcomes[outcomes$name %in% cancer.states, 'prob'])
+    if (length(context$p_cancer) == 0) context$p_cancer <- 0
+    # context$p_cancer_bleeding_s1 <- sum(outcomes[outcomes$name %in% 'cancer_s1', 'prob'])
+    # if (length(context$p_cancer_bleeding_s1) == 0) context$p_cancer_bleeding_s1 <- 0
+    # context$p_cancer_bleeding_s2 <- sum(outcomes[outcomes$name %in% 'cancer_s2', 'prob'])
+    # if (length(context$p_cancer_bleeding_s2) == 0) context$p_cancer_bleeding_s2 <- 0
+    # context$p_cancer_bleeding_s3 <- sum(outcomes[outcomes$name %in% 'cancer_s3', 'prob'])
+    # if (length(context$p_cancer_bleeding_s3) == 0) context$p_cancer_bleeding_s3 <- 0
+    # context$p_cancer_bleeding_s4 <- sum(outcomes[outcomes$name %in% 'cancer_s4', 'prob'])
+    # if (length(context$p_cancer_bleeding_s4) == 0) context$p_cancer_bleeding_s4 <- 0
+    
+    # Calculate probabilities for cancer detection in previously undetected cancers
+    # context$p_cancer_bleeding_s1_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s1', 'prob'])
+    # if (length(context$p_cancer_bleeding_s1_undetected) == 0) context$p_cancer_bleeding_s1_undetected <- 0
+    # context$p_cancer_bleeding_s2_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s2', 'prob'])
+    # if (length(context$p_cancer_bleeding_s2_undetected) == 0) context$p_cancer_bleeding_s2_undetected <- 0
+    # context$p_cancer_bleeding_s3_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s3', 'prob'])
+    # if (length(context$p_cancer_bleeding_s3_undetected) == 0) context$p_cancer_bleeding_s3_undetected <- 0
+    # context$p_cancer_bleeding_s4_undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% 'cancer_s4', 'prob'])
+    # if (length(context$p_cancer_bleeding_s4_undetected) == 0) context$p_cancer_bleeding_s4_undetected <- 0
+    context$p_cancer___undetected <- sum(outcomes.undetected[outcomes.undetected$name %in% cancer.states, 'prob'])
+    if (length(context$p_cancer___undetected) == 0) context$p_cancer___undetected <- 0
+    
+    context$p_undetected_cancer <- sum(outcomes[outcomes$name %in% c('semestral_followup_cancer', 
+                                                                     'followup_cancer'), 'prob'])
+    if (length(context$p_undetected_cancer) == 0) context$p_undetected_cancer <- 0
+    
+    # context$p_evaluation_bleeding_endo_thin <- outcomes[outcomes$name=='no_cancer_evaluation_bleeding_endo_thin', 'prob']
+    # if (length(context$p_evaluation_bleeding_endo_thin) == 0) context$p_evaluation_bleeding_endo_thin <- 0
+    # context$p_evaluation_bleeding_endo_thin_undetected <- outcomes.undetected[outcomes.undetected$name=='no_cancer_evaluation_bleeding_endo_thin', 'prob']
+    # if (length(context$p_evaluation_bleeding_endo_thin_undetected) == 0) context$p_evaluation_bleeding_endo_thin_undetected <- 0
+    hiv_msm.cost <- weighted.mean(outcomes$cost, outcomes$prob)
+    
     extended.strat.ctx[[stratum]] <- context
     tpMatrices[[stratum]] <- markov$evaluateTpMatrix(context)
-    costs[[stratum]]['postmenopausal_asymptomatic'] <- asymptomatic.cost
-    costs[[stratum]]['postmenopausal_bleeding'] <- bleeding.cost
-    costs[[stratum]]['lynch'] <- lynch.cost
+    costs[[stratum]]['hiv_msm'] <- hiv_msm.cost
     
     # if (trees$bleeding$name == 'tree_bleeding_hysterectomy') {
     #   row <- tpMatrices[[stratum]]$strategies['postmenopausal_bleeding',]

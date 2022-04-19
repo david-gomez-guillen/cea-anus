@@ -7,7 +7,7 @@ markov.outputs <- list()
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
 markov.result <- simulate('hiv_msm',
-                           strategies.bleeding,
+                           strategies,
                            markov,
                            strat.ctx,
                            initial.state,
