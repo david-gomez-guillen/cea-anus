@@ -1,11 +1,11 @@
 hpv16_la:
   description: HPV 16 (LA)
-  cost: c_cyto_hpv16_la
-  sensitivity: sensitivity_hpv16_la
-  specificity: specificity_hpv16_la
+  cost: c_cyto_hpv16la
+  sensitivity: p_hpv16la_p___cancer
+  specificity_c: p_hpv16la_p___no_cancer
   children:
     - cytology:
-        in_transition: HPV 16 +
+        in_transition: HPV +
         description: Cytology test
         cost: 0  # Cost included in previous node
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer, _
@@ -27,7 +27,7 @@ hpv16_la:
                 include: '_hra_followup___cyto_no_hsil.yaml'
                 suffix: 'cyto_not_b_no_hsil'
     - cytology:
-        in_transition: HPV 16 -
+        in_transition: HPV -
         description: Cytology test
         cost: 0  # Cost included in previous node
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer

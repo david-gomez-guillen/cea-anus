@@ -1,46 +1,47 @@
 cytology:
-  description: Cytology test
-  cost: c_cyto
-  probs: p_cyto_b, p_cyto_ascus_lsil, _
-  children:
-    - annual_followup:
-        in_transition: cyto is benign
-        description: Annual followup after cytology
-        probs: p_cancer__cyto_b, _
-        children:
-            - cancer:
-                in_transition: cancer
-                description: Cancer
-                outcome: ly_cancer__cyto_b
-            - no_cancer:
-                in_transition: no cancer
-                description: No cancer
-                outcome: ly_no_cancer__cyto_b
-    - test:
-        in_transition: cyto ASCUS, LSIL
-        description: HPV16 (LA)
-        probs: p_hpv16_p__cyto_ascus_lsil, _
-        children:
-          - hra:
-                in_transition: positive
-                description: HRA
-                include: '_hra_followup.yaml'
-                suffix: 'cyto_ascus_lsil_hpv16_p'
-          - annual_followup:
-                in_transition: negative
-                description: Annual followup after cytology
-                probs: p_cancer__cyto_ascus_lsil_hpv16_n, _
-                children:
-                    - cancer:
-                        in_transition: cancer
-                        description: Cancer
-                        outcome: ly_cancer__cyto_ascus_lsil_hpv16_n
-                    - no_cancer:
-                        in_transition: no cancer
-                        description: No cancer
-                        outcome: ly_no_cancer__cyto_ascus_lsil_hpv16_n
-    - hra:
-        in_transition: cyto ASC-H, HSIL
-        description: HRA
-        include: '_hra_followup.yaml'
-        suffix: 'cyto_hsil'
+    description: Cytology test
+    cost: c_cyto
+    sensitivity: p_cyto_b___cancer, p_cyto_ascus_or_lsil___cancer, _
+    specificity_c: p_cyto_b___no_cancer, p_cyto_ascus_or_lsil___no_cancer, _
+    children:
+        - annual_followup:
+            in_transition: benign
+            description: Annual followup after cytology
+            cost: c_followup
+            sensitivity: 1
+            specificity: 1
+            children:
+                - followup_cancer:
+                    in_transition: cancer
+                    description: Cancer
+                - followup_no_cancer:
+                    in_transition: no cancer
+                    description: No cancer
+        - hpv16_la:
+            in_transition: ASCUS or LSIL
+            description: HPV 16 (LA)
+            cost: c_hpv16la
+            sensitivity: p_hpv16la_p___cancer
+            specificity_c: p_hpv16la_p___no_cancer
+            children: 
+                - hra___cyto_ascus_lsil:
+                    in_transition: HPV +
+                    include: '_hra_followup___cyto_no_hsil.yaml'
+                    suffix: 'cyto_ascus_lsil'
+                - annual_followup:
+                    in_transition: HPV -
+                    description: Annual followup after cytology
+                    cost: c_followup
+                    sensitivity: 1
+                    specificity: 1
+                    children:
+                        - followup_cancer:
+                            in_transition: cancer
+                            description: Cancer
+                        - followup_no_cancer:
+                            in_transition: no cancer
+                            description: No cancer
+        - hra___cyto_hsil:
+            in_transition: hsil
+            include: '_hra_followup___cyto_hsil.yaml'
+            suffix: 'cyto_hsil'

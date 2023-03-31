@@ -21,9 +21,9 @@ load.all.trees <- function() {
 cat('Loading trees...\n')
 trees <- load.all.trees()
 
-SELECTED.TREES <- c('conventional', 'conventional_hpv16la')
-
-strategies <- trees[SELECTED.TREES]
+strategies <- trees[startsWith(names(trees), 'conventional') |
+                      startsWith(names(trees), 'arnm') |
+                      startsWith(names(trees), 'ascus_lsil')]
 
 cat('Loading context(s)...\n')
 # Context loading

@@ -1,24 +1,60 @@
-cytology_arnme6e7:
-  description: Cytology + ARNm E6/E7 (HPV16/18) test
-  cost: c_cyto_arnm
-  probs: p_cyto_b_ascus_lsil_arn161845_n,_
+arnm161845:
+  description: ARNmE6/E7 16/18/45
+  cost: c_cyto_arnm161845
+  sensitivity: p_arnm161845_p___cancer
+  specificity_c: p_arnm161845_p___no_cancer
   children:
-    # Cyto benign, ASCUS, LSIL and ARNm E6/E7 negative
-    - annual_followup:
-        in_transition: cyto benign, ASCUS or LSIL, ARNm (HPV16/18) negative
-        description: Annual followup after test
-        probs: p_cancer__cyto_b_ascus_lsil_arn161845_n, _
+    - cytology:
+        in_transition: HPV +
+        description: Cytology test
+        cost: 0  # Cost included in previous node
+        sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer, _
+        specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer, _
         children:
-            - cancer:
-                in_transition: cancer
-                description: Cancer
-                outcome: ly_cancer__cyto_b_ascus_lsil_arn161845_n
-            - no_cancer:
-                in_transition: no cancer
-                description: No cancer
-                outcome: ly_no_cancer__cyto_b_ascus_lsil_arn161845_n
-    # Otherwise
-    - hra:
-        in_transition: otherwise
-        include: '_hra_followup.yaml'
-        suffix: 'cyto_not_b_ascus_lsil_or_arn161845_p'
+            # Cyto benign
+            - hra___cyto_no_hsil:
+                in_transition: benign
+                include: '_hra_followup___cyto_no_hsil.yaml'
+                suffix: 'cyto_not_b_no_hsil'
+            # Cyto HSIL
+            - hra___cyto_hsil:
+                in_transition: HSIL
+                include: '_hra_followup___cyto_hsil.yaml'
+                suffix: 'cyto_hsil'
+            # Cyto not benign nor HSIL
+            - hra___cyto_no_hsil:
+                in_transition: not benign, no HSIL
+                include: '_hra_followup___cyto_no_hsil.yaml'
+                suffix: 'cyto_not_b_no_hsil'
+    - cytology:
+        in_transition: HPV -
+        description: Cytology test
+        cost: 0  # Cost included in previous node
+        sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer
+        specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer
+        children:
+            # Cyto benign
+            - annual_followup:
+                in_transition: benign
+                description: Annual followup after cytology
+                cost: c_followup
+                sensitivity: 1
+                specificity: 1
+                children:
+                    - followup_cancer:
+                        in_transition: cancer
+                        description: Cancer
+                    - followup_no_cancer:
+                        in_transition: no cancer
+                        description: No cancer
+            # Cyto HSIL
+            - hra___cyto_hsil:
+                in_transition: hsil
+                include: '_hra_followup___cyto_hsil.yaml'
+                suffix: 'cyto_hsil'
+            # Cyto not benign nor HSIL
+            - hra___cyto_no_hsil:
+                in_transition: not benign, no HSIL
+                include: '_hra_followup___cyto_no_hsil.yaml'
+                suffix: 'cyto_not_b_no_hsil'
+
