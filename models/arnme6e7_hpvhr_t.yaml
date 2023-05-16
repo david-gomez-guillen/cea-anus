@@ -1,35 +1,35 @@
 arnmhr:
   description: ARNmE6/E7 HR
-  cost: c_cyto_arnmhr
+  cost: c_arnmhr
   sensitivity: p_arnmhr_p___cancer
   specificity_c: p_arnmhr_p___no_cancer
   children:
     - cytology:
         in_transition: HPV +
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer, _
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer, _
         children:
             # Cyto benign
-            - hra___cyto_no_hsil:
+            - hra___cyto_b:
                 in_transition: benign
-                include: '_hra_followup___cyto_no_hsil.yaml'
+                include: '_hra_treatment___cyto_no_hsil.yaml'
                 suffix: 'cyto_not_b_no_hsil'
             # Cyto HSIL
             - hra___cyto_hsil:
                 in_transition: HSIL
-                include: '_hra_followup___cyto_hsil.yaml'
+                include: '_hra_treatment___cyto_hsil.yaml'
                 suffix: 'cyto_hsil'
             # Cyto not benign nor HSIL
             - hra___cyto_no_hsil:
                 in_transition: not benign, no HSIL
-                include: '_hra_followup___cyto_no_hsil.yaml'
+                include: '_hra_treatment___cyto_no_hsil.yaml'
                 suffix: 'cyto_not_b_no_hsil'
     - cytology:
         in_transition: HPV -
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer
         children:
@@ -50,11 +50,11 @@ arnmhr:
             # Cyto HSIL
             - hra___cyto_hsil:
                 in_transition: hsil
-                include: '_hra_treatment.yaml'
+                include: '_hra_treatment___cyto_hsil.yaml'
                 suffix: 'cyto_hsil'
             # Cyto not benign nor HSIL
             - hra___cyto_no_hsil:
                 in_transition: not benign, no HSIL
-                include: '_hra_treatment.yaml'
+                include: '_hra_treatment___cyto_no_hsil.yaml'
                 suffix: 'cyto_not_b_no_hsil'
 

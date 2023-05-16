@@ -48,6 +48,10 @@ setup.markov <- function(trees, strat.ctx, costs, utilities) {
     context$p_semestral_followup___undetected <- .(sum(outcomes.undetected[c('semestral_followup_cancer'), 'prob']))
     context$p_detected_cancer___undetected <- .(sum(outcomes['surgery_cancer', 'prob']))
     
+    if (endsWith(trees$hiv_msm$name, '_t')) {
+      context$p_recurrence <- context$p_recurrence___treatment
+    }
+    
     hiv_msm.cost <- weighted.mean(outcomes$cost, outcomes$prob)
     
     extended.strat.ctx[[stratum]] <- context
@@ -154,8 +158,10 @@ simulate.markov <- function(trees,
         next.state <- next.state %*% tpMatrix$strategy
       }
       next.state <- next.state %*% tpMatrix$other
-  
+      
       if (any(next.state < -EPSILON)) {
+        print(trees$hiv_msm$name)
+        print(tpMatrix$strategy)
         stop('States with negative populations, probabilities might have errors.')
       }
       else if (any(next.state < 0)) {

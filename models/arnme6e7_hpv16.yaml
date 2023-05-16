@@ -1,13 +1,13 @@
 arnm16:
   description: ARNmE6/E7 16
-  cost: c_cyto_arnm16
+  cost: c_arnm16
   sensitivity: p_arnm16_p___cancer
   specificity_c: p_arnm16_p___no_cancer
   children:
     - cytology:
         in_transition: HPV +
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer, _
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer, _
         children:
@@ -29,7 +29,7 @@ arnm16:
     - cytology:
         in_transition: HPV -
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer
         children:

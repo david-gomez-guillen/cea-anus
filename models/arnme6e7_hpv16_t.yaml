@@ -1,37 +1,40 @@
 arnm16:
   description: ARNmE6/E7 16
-  cost: c_cyto_arnm16
+  cost: c_arnm16
   sensitivity: p_arnm16_p___cancer
   specificity_c: p_arnm16_p___no_cancer
+  probs: p_arnm16_p, p_arnm16_n
   children:
     - cytology:
         in_transition: HPV +
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer, _
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer, _
+        probs: p_cyto_b, p_cyto_hsil, p_cyto_no_hsil
         children:
             # Cyto benign
-            - hra___cyto_no_hsil:
+            - hra___cyto_b:
                 in_transition: benign
-                include: '_hra_followup___cyto_no_hsil.yaml'
+                include: '_hra_treatment___cyto_no_hsil.yaml'
                 suffix: 'cyto_not_b_no_hsil'
             # Cyto HSIL
             - hra___cyto_hsil:
                 in_transition: HSIL
-                include: '_hra_followup___cyto_hsil.yaml'
+                include: '_hra_treatment___cyto_hsil.yaml'
                 suffix: 'cyto_hsil'
             # Cyto not benign nor HSIL
             - hra___cyto_no_hsil:
                 in_transition: not benign, no HSIL
-                include: '_hra_followup___cyto_no_hsil.yaml'
+                include: '_hra_treatment___cyto_no_hsil.yaml'
                 suffix: 'cyto_not_b_no_hsil'
     - cytology:
         in_transition: HPV -
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer
+        probs: p_cyto_b, p_cyto_hsil, p_cyto_no_hsil
         children:
             # Cyto benign
             - annual_followup:
@@ -40,6 +43,7 @@ arnm16:
                 cost: c_followup
                 sensitivity: 1
                 specificity: 1
+                probs: p_cancer, p_no_cancer
                 children:
                     - followup_cancer:
                         in_transition: cancer
@@ -50,11 +54,11 @@ arnm16:
             # Cyto HSIL
             - hra___cyto_hsil:
                 in_transition: hsil
-                include: '_hra_treatment.yaml'
+                include: '_hra_treatment___cyto_hsil.yaml'
                 suffix: 'cyto_hsil'
             # Cyto not benign nor HSIL
             - hra___cyto_no_hsil:
                 in_transition: not benign, no HSIL
-                include: '_hra_treatment.yaml'
+                include: '_hra_treatment___cyto_no_hsil.yaml'
                 suffix: 'cyto_not_b_no_hsil'
 

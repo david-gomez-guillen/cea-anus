@@ -26,7 +26,7 @@ cytology:
             children: 
                 - hra___cyto_ascus_lsil:
                     in_transition: HPV +
-                    include: '_hra_treatment.yaml'
+                    include: '_hra_treatment___cyto_no_hsil.yaml'
                     suffix: 'cyto_ascus_lsil'
                 - annual_followup:
                     in_transition: HPV -
@@ -43,5 +43,5 @@ cytology:
                             description: No cancer
         - hra___cyto_hsil:
             in_transition: hsil
-            include: '_hra_treatment.yaml'
+            include: '_hra_treatment___cyto_hsil.yaml'
             suffix: 'cyto_hsil'

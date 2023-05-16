@@ -20,10 +20,10 @@ cytology:
     # Cyto HSIL
     - hra___cyto_hsil:
         in_transition: HSIL
-        include: '_hra_treatment.yaml'
+        include: '_hra_treatment___cyto_hsil.yaml'
         suffix: 'cyto_hsil'
     # Cyto not benign nor HSIL
     - hra___cyto_no_hsil:
         in_transition: not benign, no HSIL
-        include: '_hra_treatment.yaml'
+        include: '_hra_treatment___cyto_no_hsil.yaml'
         suffix: 'cyto_not_b_no_hsil'

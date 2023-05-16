@@ -1,13 +1,13 @@
 arnmhr:
   description: ARNmE6/E7 HR
-  cost: c_cyto_arnmhr
+  cost: c_arnmhr
   sensitivity: p_arnmhr_p___cancer
   specificity_c: p_arnmhr_p___no_cancer
   children:
     - cytology:
         in_transition: HPV +
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer, _
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer, _
         children:
@@ -29,7 +29,7 @@ arnmhr:
     - cytology:
         in_transition: HPV -
         description: Cytology test
-        cost: 0  # Cost included in previous node
+        cost: c_cyto
         sensitivity: p_cyto_b___cancer, p_cyto_hsil___cancer
         specificity_c: p_cyto_b___no_cancer, p_cyto_hsil___no_cancer
         children:
