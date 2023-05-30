@@ -6,7 +6,7 @@ hra:
   children:
     - annual_followup:
         in_transition: HRA, cyto no HSIL
-        description: Annual followup after HRA
+        description: Annual followup
         sensitivity: 1
         specificity: 1
         children:

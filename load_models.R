@@ -25,6 +25,7 @@ strategies <- trees[startsWith(names(trees), 'conventional') |
                       startsWith(names(trees), 'arnm') |
                       startsWith(names(trees), 'ascus_lsil')]
 
+
 cat('Loading context(s)...\n')
 # Context loading
 context.setup <- function(strat.ctx) {
@@ -101,3 +102,11 @@ independent.pars <- getIndependentParameters(strat.ctx.path)
 
 cat('Loading markov model...\n')
 markov <- loadMarkovModels(paste0('models/markov.xlsx'))
+
+
+# for(s in strategies) {
+#   plt <- s$show(strat.ctx$y40_44, prevalence=1, nodeInfoFields = c('path.prob.100k', 'cost'))
+#   visNetwork::visSave(plt, paste0('output/hsil_', s$name, '.html'), selfcontained = TRUE)
+#   plt <- s$show(strat.ctx$y40_44, prevalence=0, nodeInfoFields = c('path.prob.100k', 'cost'))
+#   visNetwork::visSave(plt, paste0('output/no_hsil_', s$name, '.html'), selfcontained = TRUE)
+# }

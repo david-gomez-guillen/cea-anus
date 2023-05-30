@@ -17,12 +17,12 @@ cytology:
                 - followup_no_hsil:
                     in_transition: no hsil
                     description: No HSIL
-        - hpvhrla:
+        - hpv16la:
             in_transition: ASCUS or LSIL
-            description: HPV-HR (LA)
-            cost: c_hpvhrla
-            sensitivity: p_hpvhrla_p___hsil
-            specificity_c: p_hpvhrla_p___no_hsil
+            description: HPV-16 (LA)
+            cost: c_hpv16la
+            sensitivity: p_hpv16la_p___hsil
+            specificity_c: p_hpv16la_p___no_hsil
             children: 
                 - hra___cyto_ascus_lsil:
                     in_transition: HPV +
