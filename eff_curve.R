@@ -3,7 +3,7 @@ library(ggplot2)
 cost.label <- '€'
 eff.label <- 'QALY'
 nudge.x.icer <- .01
-nudge.y.icer <- .01
+nudge.y.icer <- .001
 
 x.label <- ifelse(is.null(cost.label), "Cost", paste0("Cost [€]"))
 y.label <- ifelse(is.null(eff.label), "Effectiveness", 
@@ -60,32 +60,32 @@ strat.names <- c(
 
 strat.labels <- c(
   'Conventional',
-  'Conventional (HPV-16)',
-  'Conventional (HPV-16/18)',
+  'Conventional (HPV-16 LA)',
+  'Conventional (HPV-16/18 LA)',
   'Conventional (HPV-HR LA)',
-  'Conventional (HPV-HR HC)',
+  'Conventional (HPV-HR)',
   'ARNmE6/E7 (HPV-16)',
   'ARNmE6/E7 (HPV-16/18/45)',
   'ARNmE6/E7 (HPV-HR)',
-  'ASCUS/LSIL diff (HPV-16)',
-  'ASCUS/LSIL diff (HPV-16/18)',
+  'ASCUS/LSIL diff (HPV-16 LA)',
+  'ASCUS/LSIL diff (HPV-16/18 LA)',
   'ASCUS/LSIL diff (HPV-HR LA)',
-  'ASCUS/LSIL diff (HPV-HR HC)',
+  'ASCUS/LSIL diff (HPV-HR)',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16)',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16/18/45)',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-HR)',
   'Conventional [T]',
-  'Conventional (HPV-16) [T]',
-  'Conventional (HPV-16/18) [T]',
+  'Conventional (HPV-16 LA) [T]',
+  'Conventional (HPV-16/18 LA) [T]',
   'Conventional (HPV-HR LA) [T]',
-  'Conventional (HPV-HR HC) [T]',
+  'Conventional (HPV-HR) [T]',
   'ARNmE6/E7 (HPV-16) [T]',
   'ARNmE6/E7 (HPV-16/18/45) [T]',
   'ARNmE6/E7 (HPV-HR) [T]',
-  'ASCUS/LSIL diff (HPV-16) [T]',
-  'ASCUS/LSIL diff (HPV-16/18) [T]',
+  'ASCUS/LSIL diff (HPV-16 LA) [T]',
+  'ASCUS/LSIL diff (HPV-16/18 LA) [T]',
   'ASCUS/LSIL diff (HPV-HR LA) [T]',
-  'ASCUS/LSIL diff (HPV-HR HC) [T]',
+  'ASCUS/LSIL diff (HPV-HR) [T]',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16) [T]',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16/18/45) [T]',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-HR) [T]'
@@ -135,3 +135,4 @@ plt <- plt +
                     labels=strat.labels,
                     name='Strategy')
 print(plt)
+ggplotly(plt)
