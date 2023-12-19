@@ -3,7 +3,7 @@ library(ggplot2)
 cost.label <- '€'
 eff.label <- 'QALY'
 nudge.x.icer <- .01
-nudge.y.icer <- .001
+nudge.y.icer <- .005
 
 x.label <- ifelse(is.null(cost.label), "Cost", paste0("Cost [€]"))
 y.label <- ifelse(is.null(eff.label), "Effectiveness", 
@@ -11,12 +11,24 @@ y.label <- ifelse(is.null(eff.label), "Effectiveness",
 ce.label <- ifelse(is.null(cost.label) && is.null(eff.label), 
                    "", paste0(" ", cost.label, "/", eff.label))
 fullSummary <- markov.result$summary
+
+# fullSummary <- fullSummary[grepl('la', fullSummary$strategy, perl=TRUE) | grepl('diff_hpv16', fullSummary$strategy, perl=TRUE),]
+fullSummary <- fullSummary[grepl('arnm', fullSummary$strategy, perl=TRUE) | 
+                             grepl('^conventional-', fullSummary$strategy, perl=TRUE) |
+                             grepl('^conventional_t-', fullSummary$strategy, perl=TRUE),]
+# fullSummary <- fullSummary[grepl('_t$', fullSummary$strategy, perl=TRUE),]
+fullSummary <- analyzeCE(fullSummary, plot=TRUE)$summary
+
 plot.df <- fullSummary
 undominated.df <- fullSummary[fullSummary$domination == 
                                 "undominated", ]
-undominated.df$label <- paste0("ICER=", formatC(round(undominated.df$ICER, 
-                                                      digits = 2), big.mark = ",", format = "d"), ce.label)
-undominated.df[1, "label"] <- ""
+if (nrow(undominated.df) > 0) {
+  undominated.df$label <- paste0("ICER=", formatC(round(undominated.df$ICER, 
+                                                        digits = 2), big.mark = ",", format = "d"), ce.label)
+  undominated.df[1, "label"] <- ""
+} else {
+  undominated.df$label <- numeric(0)
+}
 y.range <- diff(range(plot.df$E))
 x.range <- diff(range(plot.df$C))
 plt <- ggplot2::ggplot(plot.df, ggplot2::aes(x = C, 
@@ -34,13 +46,13 @@ strat.names <- c(
   'arnme6e7_hpv16-semestral_followup',
   'arnme6e7_hpv161845-semestral_followup',
   'arnme6e7_hpvhr-semestral_followup',
-  'ascus_lsil_diff_hpv16-semestral_followup',
-  'ascus_lsil_diff_hpv1618-semestral_followup',
+  'ascus_lsil_diff_hpv16la-semestral_followup',
+  'ascus_lsil_diff_hpv1618la-semestral_followup',
   'ascus_lsil_diff_hpvhrla-semestral_followup',
   'ascus_lsil_diff_hpvhrhc-semestral_followup',
-  'ascus_lsil_diff_arn16-semestral_followup',
-  'ascus_lsil_diff_arn161845-semestral_followup',
-  'ascus_lsil_diff_arnhr-semestral_followup',
+  'ascus_lsil_diff_arnme6e7_16-semestral_followup',
+  'ascus_lsil_diff_arnme6e7_161845-semestral_followup',
+  'ascus_lsil_diff_arnme6e7_hr-semestral_followup',
   'conventional_t-semestral_followup_t',
   'conventional_hpv16la_t-semestral_followup_t',
   'conventional_hpv1618la_t-semestral_followup_t',
@@ -49,43 +61,43 @@ strat.names <- c(
   'arnme6e7_hpv16_t-semestral_followup_t',
   'arnme6e7_hpv161845_t-semestral_followup_t',
   'arnme6e7_hpvhr_t-semestral_followup_t',
-  'ascus_lsil_diff_hpv16_t-semestral_followup_t',
-  'ascus_lsil_diff_hpv1618_t-semestral_followup_t',
+  'ascus_lsil_diff_hpv16la_t-semestral_followup_t',
+  'ascus_lsil_diff_hpv1618la_t-semestral_followup_t',
   'ascus_lsil_diff_hpvhrla_t-semestral_followup_t',
   'ascus_lsil_diff_hpvhrhc_t-semestral_followup_t',
-  'ascus_lsil_diff_arn16_t-semestral_followup_t',
-  'ascus_lsil_diff_arn161845_t-semestral_followup_t',
-  'ascus_lsil_diff_arnhr_t-semestral_followup_t'
+  'ascus_lsil_diff_arnme6e7_16_t-semestral_followup_t',
+  'ascus_lsil_diff_arnme6e7_161845_t-semestral_followup_t',
+  'ascus_lsil_diff_arnme6e7_hr_t-semestral_followup_t'
 )
 
 strat.labels <- c(
   'Conventional',
-  'Conventional (HPV-16 LA)',
-  'Conventional (HPV-16/18 LA)',
-  'Conventional (HPV-HR LA)',
-  'Conventional (HPV-HR)',
+  'HPV-16 LA',
+  'HPV-16/18 LA',
+  'HPV-HR LA',
+  'HPV HC',
   'ARNmE6/E7 (HPV-16)',
   'ARNmE6/E7 (HPV-16/18/45)',
   'ARNmE6/E7 (HPV-HR)',
   'ASCUS/LSIL diff (HPV-16 LA)',
   'ASCUS/LSIL diff (HPV-16/18 LA)',
   'ASCUS/LSIL diff (HPV-HR LA)',
-  'ASCUS/LSIL diff (HPV-HR)',
+  'ASCUS/LSIL diff (HPV HC)',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16)',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16/18/45)',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-HR)',
   'Conventional [T]',
-  'Conventional (HPV-16 LA) [T]',
-  'Conventional (HPV-16/18 LA) [T]',
-  'Conventional (HPV-HR LA) [T]',
-  'Conventional (HPV-HR) [T]',
+  'HPV-16 LA [T]',
+  'HPV-16/18 LA [T]',
+  'HPV-HR LA [T]',
+  'HPV HC [T]',
   'ARNmE6/E7 (HPV-16) [T]',
   'ARNmE6/E7 (HPV-16/18/45) [T]',
   'ARNmE6/E7 (HPV-HR) [T]',
   'ASCUS/LSIL diff (HPV-16 LA) [T]',
   'ASCUS/LSIL diff (HPV-16/18 LA) [T]',
   'ASCUS/LSIL diff (HPV-HR LA) [T]',
-  'ASCUS/LSIL diff (HPV-HR) [T]',
+  'ASCUS/LSIL diff (HPV HC) [T]',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16) [T]',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-16/18/45) [T]',
   'ASCUS/LSIL diff (ARNmE6/E7 HPV-HR) [T]'
@@ -121,6 +133,12 @@ names(strat.fill) <- strat.names
 strat.colors <- c(rep('black', 15), rep('red', 15))
 names(strat.colors) <- strat.names
 
+strat.indices <- strat.names %in% fullSummary$strategy
+strat.names <- strat.names[strat.indices]
+strat.colors <- strat.colors[strat.indices]
+strat.fill <- strat.fill[strat.indices]
+strat.shapes <- strat.shapes[strat.indices]
+
 fullSummary$strategy <- factor(fullSummary$strategy, levels=strat.names, ordered=TRUE)
 
 plt <- plt + 
@@ -134,5 +152,6 @@ plt <- plt +
   scale_fill_manual(values=strat.fill,
                     labels=strat.labels,
                     name='Strategy')
+  # coord_cartesian(ylim=c(16.94, 16.96))
 print(plt)
 ggplotly(plt)

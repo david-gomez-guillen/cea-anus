@@ -158,9 +158,118 @@ setup.markov <- function(trees, strat.ctx, costs, utilities) {
               utilities=utilities))
 }
 
-calculate.iteration.measures <- function(additional.info, year, iter, current.state, tpMatrix, cost, eff, ctx) {
-  ac_incidence <- current.state %*% tpMatrix$strategy[, 'cancer']
-  ac_mortality <- current.state %*% tpMatrix$other[, 'death_cancer']
+calculate.iteration.measures <- function(trees, additional.info, year, iter, current.state, tpMatrix, cost, eff, ctx) {
+  strat <- trees[[1]]$name
+  cs.df <- as.data.frame(current.state)
+  
+  n_cancers <- sum(cs.df[!names(cs.df) %in% 'cancer'] * tpMatrix$strategy[!names(cs.df) %in% 'cancer', 'cancer'])
+  n_deaths_cancer <- sum(cs.df[!names(cs.df) %in% 'death_cancer'] * tpMatrix$other[!names(cs.df) %in% 'death_cancer', 'death_cancer'])
+  
+  n_detected_false_hsil <- cs.df[['hiv_positive']] * sum(tpMatrix$strategy['hiv_positive', c('semestral_followup1_no_hsil', 'semestral_followup1_irc_no_hsil')])
+  n_detected_true_hsil <- cs.df[['undetected_hsil']] * sum(tpMatrix$strategy['undetected_hsil', c('semestral_followup1_hsil', 'semestral_followup1_irc_hsil')])
+  n_undetected_hsil <- sum(cs.df[c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2')] * tpMatrix$other[c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2'), 'undetected_hsil'])
+  n_semestral_followup_hsil <- cs.df[['undetected_hsil']] * tpMatrix$strategy['undetected_hsil', 'semestral_followup1_hsil'] +
+    cs.df[['undetected_hsil']] * tpMatrix$strategy['undetected_hsil', 'semestral_followup1_irc_hsil'] 
+  n_semestral_followup_no_hsil <- cs.df[['hiv_positive']] * tpMatrix$strategy['hiv_positive', 'semestral_followup1_no_hsil'] +
+    cs.df[['hiv_positive']] * tpMatrix$strategy['hiv_positive', 'semestral_followup1_irc_no_hsil'] 
+  n_surgery_no_cancer <- sum(cs.df[!names(cs.df) %in% 'surgery_no_cancer'] * tpMatrix$strategy[!names(cs.df) %in% 'surgery_no_cancer', 'surgery_no_cancer'])
+  
+  n_cyto <- sum(cs.df[c('hiv_positive', 
+                         'undetected_hsil', 
+                         'semestral_followup1_no_hsil', 
+                         'semestral_followup2_no_hsil', 
+                         'semestral_followup1_hsil', 
+                         'semestral_followup2_hsil', 
+                         'semestral_followup1_irc_no_hsil', 
+                         'semestral_followup2_irc_no_hsil', 
+                         'semestral_followup1_irc_hsil', 
+                         'semestral_followup2_irc_hsil')])
+  
+  n_hpv <- 0
+  if (startsWith(strat, 'conventional_hpv') || startsWith(strat, 'arnme6e7')) {
+    n_hpv <- sum(cs.df[c('hiv_positive', 'undetected_hsil')])
+  } else if (startsWith(strat, 'ascus_lsil_diff')) {
+    n_hpv <- cs.df[['hiv_positive']] * ctx$p_cyto_ascus_or_lsil___no_hsil + cs.df[['undetected_hsil']] * ctx$p_cyto_ascus_or_lsil___hsil
+  }
+  
+  test.name <- list(
+    arnme6e7_hpv16='arnm16',
+    arnme6e7_hpv161845='arnm161845',
+    arnme6e7_hpvhr='arnmhr',
+    ascus_lsil_diff_arnme6e7_16='arnm16',
+    ascus_lsil_diff_arnme6e7_161845='arnm161845',
+    ascus_lsil_diff_arnme6e7_hr='arnmhr',
+    ascus_lsil_diff_hpv1618la='hpv1618la',
+    ascus_lsil_diff_hpv16la='hpv16la',
+    ascus_lsil_diff_hpvhrhc='hpvhrhc',
+    ascus_lsil_diff_hpvhrla='hpvhrla',
+    conventional_hpv1618la='hpv1618la',
+    conventional_hpv16la='hpv16la',
+    conventional_hpvhrhc='hpvhrhc',
+    conventional_hpvhrla='hpvhrla',
+    arnme6e7_hpv16_t='arnm16',
+    arnme6e7_hpv161845_t='arnm161845',
+    arnme6e7_hpvhr_t='arnmhr',
+    ascus_lsil_diff_arnme6e7_16_t='arnm16',
+    ascus_lsil_diff_arnme6e7_161845_t='arnm161845',
+    ascus_lsil_diff_arnme6e7_hr_t='arnmhr',
+    ascus_lsil_diff_hpv1618la_t='hpv1618la',
+    ascus_lsil_diff_hpv16la_t='hpv16la',
+    ascus_lsil_diff_hpvhrhc_t='hpvhrhc',
+    ascus_lsil_diff_hpvhrla_t='hpvhrla',
+    conventional_hpv1618la_t='hpv1618la',
+    conventional_hpv16la_t='hpv16la',
+    conventional_hpvhrhc_t='hpvhrhc',
+    conventional_hpvhrla_t='hpvhrla'
+  )
+  
+  if (strat %in% c('conventional', 'conventional_t')) {
+    n_hra_no_hsil <- cs.df[[c('hiv_positive')]] * (1 - ctx$p_cyto_b___no_hsil)
+    n_hra_hsil <- cs.df[['undetected_hsil']] * (1 - ctx$p_cyto_b___hsil)
+  } else if (startsWith(strat, 'conventional_hpv') || startsWith(strat, 'arnme6e7')) {
+    p.hpv.p_hsil <- ctx[[paste0('p_', test.name[[strat]], '_p___hsil')]]
+    p.hpv.p_no.hsil <- ctx[[paste0('p_', test.name[[strat]], '_p___no_hsil')]]
+    
+    n_hra_no_hsil <- cs.df[[c('hiv_positive')]] * (p.hpv.p_no.hsil + (1 - p.hpv.p_no.hsil) * (1 - ctx$p_cyto_b___no_hsil)) + 
+      sum(cs.df[c('semestral_followup1_no_hsil', 
+                  'semestral_followup2_no_hsil', 
+                  'semestral_followup1_irc_no_hsil', 
+                  'semestral_followup2_irc_no_hsil')])
+    n_hra_hsil <- cs.df[['undetected_hsil']] * (p.hpv.p_hsil + (1 - p.hpv.p_hsil) * (1 - ctx$p_cyto_b___hsil)) +
+      sum(cs.df[c('semestral_followup1_hsil', 
+                  'semestral_followup2_hsil', 
+                  'semestral_followup1_irc_hsil', 
+                  'semestral_followup2_irc_hsil')])
+  } else if (startsWith(strat, 'ascus_lsil_diff')) {
+    p.hpv.p_hsil <- paste0('p_', test.name[[strat]], '_p___hsil')
+    p.hpv.p_no.hsil <- paste0('p_', test.name[[strat]], '_p___no_hsil')
+    p.cyto.hsil_hsil <- (1 - ctx$p_cyto_b___hsil - ctx$p_cyto_ascus_or_lsil___hsil)
+    p.cyto.hsil_no.hsil <- (1 - ctx$p_cyto_b___no_hsil - ctx$p_cyto_ascus_or_lsil___no_hsil)
+    
+    n_hra_no_hsil <- cs.df[[c('hiv_positive')]] * (p.cyto.hsil_no.hsil + ctx$p_cyto_ascus_or_lsil___no_hsil * ctx[[p.hpv.p_no.hsil]]) +
+      sum(cs.df[c('semestral_followup1_no_hsil', 
+                  'semestral_followup2_no_hsil', 
+                  'semestral_followup1_irc_no_hsil', 
+                  'semestral_followup2_irc_no_hsil')])
+    n_hra_hsil <- cs.df[['undetected_hsil']] * (p.cyto.hsil_hsil + ctx$p_cyto_ascus_or_lsil___hsil * ctx[[p.hpv.p_hsil]]) +
+      sum(cs.df[c('semestral_followup1_hsil', 
+                  'semestral_followup2_hsil', 
+                  'semestral_followup1_irc_hsil', 
+                  'semestral_followup2_irc_hsil')])
+  }
+  
+  n_treatment_no_hsil <- 0
+  n_treatment_hsil <- 0
+  if (endsWith(strat, '_t')) {
+    n_treatment_no_hsil <- n_hra_no_hsil * (
+      ctx$p_cyto_hsil___no_hsil * (1 - ctx$p_hra_invasive_cancer___cyto_hsil__no_hsil) * ctx$p_hra_hsil___cyto_hsil__no_hsil +
+      (1 - ctx$p_cyto_b___no_hsil - ctx$p_cyto_hsil___no_hsil) * (1 - ctx$p_hra_invasive_cancer___cyto_no_hsil__no_hsil) * ctx$p_hra_hsil___cyto_no_hsil__no_hsil
+       )
+    n_treatment_hsil <- n_hra_hsil * (
+      ctx$p_cyto_hsil___hsil * (1 - ctx$p_hra_invasive_cancer___cyto_hsil__hsil) * ctx$p_hra_hsil___cyto_hsil__hsil +
+        (1 - ctx$p_cyto_b___hsil - ctx$p_cyto_hsil___hsil) * (1 - ctx$p_hra_invasive_cancer___cyto_no_hsil__hsil) * ctx$p_hra_hsil___cyto_no_hsil__hsil
+    )
+  }
   
   additional.info <- rbind(additional.info,
                            list(
@@ -168,8 +277,20 @@ calculate.iteration.measures <- function(additional.info, year, iter, current.st
                              iter=iter,
                              cost=cost,
                              eff=eff,
-                             ac_incidence=ac_incidence,
-                             ac_mortality=ac_mortality))
+                             n_cancers=n_cancers,
+                             n_deaths_cancer=n_deaths_cancer,
+                             n_detected_false_hsil=n_detected_false_hsil,
+                             n_detected_true_hsil=n_detected_true_hsil,
+                             n_undetected_hsil=n_undetected_hsil,
+                             n_surgery_no_cancer=n_surgery_no_cancer,
+                             n_semestral_followup_hsil=n_semestral_followup_hsil,
+                             n_semestral_followup_no_hsil=n_semestral_followup_no_hsil,
+                             n_cyto=n_cyto,
+                             n_hpv=n_hpv,
+                             n_hra_no_hsil=n_hra_no_hsil,
+                             n_hra_hsil=n_hra_hsil,
+                             n_treatment_no_hsil=n_treatment_no_hsil,
+                             n_treatment_hsil=n_treatment_hsil))
   return(additional.info)
 }
 
@@ -185,8 +306,20 @@ simulate.markov <- function(trees,
                                 iter=1,
                                 cost=0,
                                 eff=0,
-                                ac_incidence=0,
-                                ac_mortality=0)
+                                n_cancers=0,
+                                n_deaths_cancer=0,
+                                n_detected_false_hsil=0,
+                                n_detected_true_hsil=0,
+                                n_undetected_hsil=0,
+                                n_surgery_no_cancer=0,
+                                n_semestral_followup_hsil=0,
+                                n_semestral_followup_no_hsil=0,
+                                n_cyto=0,
+                                n_hpv=0,
+                                n_hra_no_hsil=0,
+                                n_hra_hsil=0,
+                                n_treatment_no_hsil=0,
+                                n_treatment_hsil=0)
   
   period <- 1/iters.per.year
   # ASSUMPTION: all node info is equal for all strata
@@ -239,7 +372,7 @@ simulate.markov <- function(trees,
     current.eff <- sum(current.state * iter.utilities) * (1-discount.rate)^(iter/iters.per.year)
     overall.eff <- overall.eff + current.eff
     
-    additional.info <- calculate.iteration.measures(additional.info, year, iter, current.state, tpMatrix, current.cost, current.eff, ctx)
+    additional.info <- calculate.iteration.measures(trees, additional.info, year, iter, current.state, tpMatrix, current.cost, current.eff, ctx)
     
     next.state <- current.state %*% tpMatrix$strategy %*% tpMatrix$other
     

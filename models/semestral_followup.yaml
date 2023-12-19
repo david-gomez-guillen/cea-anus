@@ -16,7 +16,7 @@ cytology:
                 in_transition: invasive cancer
                 description: Colorrectal surgery
                 cost: c_surgery
-                sensitivity: p_cancer___hsil
+                sensitivity: p_cancer___hra_invasive_cancer
                 specificity: 1
                 children:
                     - surgery_cancer:
@@ -41,7 +41,7 @@ cytology:
                 in_transition: invasive cancer
                 description: Colorrectal surgery
                 cost: c_surgery
-                sensitivity: p_cancer___hsil
+                sensitivity: p_cancer___hra_invasive_cancer
                 specificity: 1
                 children:
                     - surgery_cancer:
