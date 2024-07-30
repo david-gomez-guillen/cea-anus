@@ -16,9 +16,10 @@ markov.result <- simulate('hiv_msm',
                            initial.state,
                            start.age=START.AGE,
                            max.age=MAX.AGE,
-                           discount.rate = .03)
+                           discount.rate=.03)
 print(markov.result$plot)
 print(markov.result$summary)
+print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
 
 # x <- markov.result$info$conventional$additional.info
 # xt <- markov.result$info$conventional_t$additional.info
@@ -49,7 +50,7 @@ markov.result.0 <- simulate('hiv_msm',
                           discount.rate = .0)
 
 strat.ctx <- lapply(strat.ctx, function(ctx) {
-  ctx[2:8] <- 6
+  ctx[c('c_arnm16','c_arnm161845','c_arnmhr','c_hpv16la','c_hpv1618la','c_hpvhrla','c_hpvhrhc')] <- 6
   ctx
 })
 markov.result.3.6e <- simulate('hiv_msm',
@@ -77,19 +78,19 @@ for(strat in names(markov.result$info)) {
   info.sum <- apply(info, 2, sum)
   info.sum$strategy <- strat
   info.sum$eff <- info.sum$eff / 2
- 
+
   info.0 <- markov.result.0$info[[strat]]$additional.info
   info.0.6e <- markov.result.0.6e$info[[strat]]$additional.info
   info.3.6e <- markov.result.3.6e$info[[strat]]$additional.info
-  
+
   info.sum$eff.0 <- sum(info.0$eff)/2
   info.sum$cost.0.25e <- sum(info.0$cost)
   info.sum$cost.0.6e <- sum(info.0.6e$cost)
   info.sum$cost.3.6e <- sum(info.3.6e$cost)
-  
+
   summary.df <- rbind(summary.df, info.sum)
 }
 summary.df <- summary.df[,c(19, 3, 21, 23, 22, 4, 20, 5:18)]
 summary.df[,c(8:21)] <- summary.df[,c(8:21)] * 100000
 names(summary.df)[2:7] <- c('cost.disc3.test25', 'cost.disc0.test25', 'cost.disc3.test6', 'cost.disc0.test6', 'qalys.disc3', 'qalys.disc0')
-write.xlsx(summary.df, 'output/summary_anus.xlsx', row.names = F)
+# write.xlsx(summary.df, 'output/summary_anus.xlsx', row.names = F)

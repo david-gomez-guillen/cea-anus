@@ -26,19 +26,19 @@ hra:
         children:
             - semestral_followup:
                 # Cyto and HRA HSIL
-                # HRA HSIL -> IRC treatment
+                # HRA HSIL -> treatment
                 in_transition: HRA HSIL
-                description: IRC -> Semestral followup
-                cost: c_followup_irc
+                description: Treatment -> Semestral followup
+                cost: c_followup_treatment
                 sensitivity: 1
                 specificity: 1
                 children:
-                    - semestral_followup_hsil_irc:
+                    - semestral_followup_hsil_treatment:
                         in_transition: hsil
-                        description: HSIL (IRC treatment)
-                    - semestral_followup_no_hsil_irc:
+                        description: HSIL (treatment)
+                    - semestral_followup_no_hsil_treatment:
                         in_transition: no hsil
-                        description: No HSIL (IRC treatment)
+                        description: No HSIL (treatment)
             - annual_followup:
                 in_transition: HRA no HSIL
                 description: Annual followup

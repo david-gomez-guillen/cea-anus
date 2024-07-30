@@ -9,10 +9,26 @@ load.all.trees <- function() {
   trees <- list()
   for(f in list.files('models/')) {
     if (!startsWith(f, '_') && endsWith(f, '.yaml')) {
-      name <- substr(f,1,(nchar(f) - 5))
-      t <- loadDecisionTree(paste0('models/', f))
-      assign(name, t, envir = .GlobalEnv)
-      trees[[name]] <- t
+      if (endsWith(f, '_t.yaml')) {
+        # Two versions of each treatment strategy (TCA + IRC)
+        name <- paste0(substr(f,1,(nchar(f) - 5)), '_tca')
+        t <- loadDecisionTree(paste0('models/', f))
+        t$name <- name
+        assign(name, t, envir = .GlobalEnv)
+        trees[[name]] <- t
+        
+        name <- paste0(substr(f,1,(nchar(f) - 5)), '_irc')
+        t <- loadDecisionTree(paste0('models/', f))
+        t$name <- name
+        assign(name, t, envir = .GlobalEnv)
+        trees[[name]] <- t
+      } else {
+        # One version (followup)
+        name <- substr(f,1,(nchar(f) - 5))
+        t <- loadDecisionTree(paste0('models/', f))
+        assign(name, t, envir = .GlobalEnv)
+        trees[[name]] <- t
+      }
     }
   }
   return(trees)

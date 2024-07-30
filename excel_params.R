@@ -18,7 +18,6 @@ recalculate.formulas <- function(df) {
   ls <- str_extract_all(df$value, '([a-zA-Z]+?)')
   ns <- str_extract_all(df$value, '([0-9]+)')
   vs <- str_extract_all(df$value, '\\$?([a-zA-Z]+)\\$?([0-9]+)')
-  
   while (sum(sapply(vs, function(x)length(x))) > 0) {
     for (i in seq_along(vs)) {
       if (length(vs[[i]]) > 0) {
