@@ -1,3 +1,5 @@
+library(dplyr)
+setwd('~/Documents/models_ce/anus')
 source('load_models.R')
 source('markov.R')
 
@@ -10,16 +12,18 @@ MAX.AGE <- 80
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
 markov.result <- simulate('hiv_msm',
-                           strategies,
+                           strategies$hiv_msm,
                            markov,
                            strat.ctx,
                            initial.state,
-                           start.age=START.AGE,
-                           max.age=MAX.AGE,
                            discount.rate=.03)
-print(markov.result$plot)
-print(markov.result$summary)
-print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
+
+# Remove redundant suffix for strategy names
+markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
+
+# print(markov.result$plot)
+# print(markov.result$summary)
+# print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
 
 # x <- markov.result$info$conventional$additional.info
 # xt <- markov.result$info$conventional_t$additional.info
@@ -40,40 +44,35 @@ print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
 cat('Done.\n')
 
 
+cat('Disc0\n')
 markov.result.0 <- simulate('hiv_msm',
-                          strategies,
+                          strategies$hiv_msm,
                           markov,
                           strat.ctx,
                           initial.state,
-                          start.age=START.AGE,
-                          max.age=MAX.AGE,
                           discount.rate = .0)
 
 strat.ctx <- lapply(strat.ctx, function(ctx) {
-  ctx[c('c_arnm16','c_arnm161845','c_arnmhr','c_hpv16la','c_hpv1618la','c_hpvhrla','c_hpvhrhc')] <- 6
+  ctx[c('c_arnm16','c_arnm161845','c_arnmhr')] <- 6
   ctx
 })
+
 markov.result.3.6e <- simulate('hiv_msm',
-                          strategies,
+                          strategies$hiv_msm,
                           markov,
                           strat.ctx,
                           initial.state,
-                          start.age=START.AGE,
-                          max.age=MAX.AGE,
                           discount.rate = .03)
 
 markov.result.0.6e <- simulate('hiv_msm',
-                               strategies,
+                               strategies$hiv_msm,
                                markov,
                                strat.ctx,
                                initial.state,
-                               start.age=START.AGE,
-                               max.age=MAX.AGE,
                                discount.rate = .0)
 source('load_models.R')
 
-summary.df <- data.frame()
-for(strat in names(markov.result$info)) {
+summary.df <- lapply(names(markov.result$info), function(strat) {
   info <- markov.result$info[[strat]]$additional.info
   info.sum <- apply(info, 2, sum)
   info.sum$strategy <- strat
@@ -87,9 +86,9 @@ for(strat in names(markov.result$info)) {
   info.sum$cost.0.25e <- sum(info.0$cost)
   info.sum$cost.0.6e <- sum(info.0.6e$cost)
   info.sum$cost.3.6e <- sum(info.3.6e$cost)
+  info.sum
+}) %>% bind_rows()
 
-  summary.df <- rbind(summary.df, info.sum)
-}
 summary.df <- summary.df[,c(19, 3, 21, 23, 22, 4, 20, 5:18)]
 summary.df[,c(8:21)] <- summary.df[,c(8:21)] * 100000
 names(summary.df)[2:7] <- c('cost.disc3.test25', 'cost.disc0.test25', 'cost.disc3.test6', 'cost.disc0.test6', 'qalys.disc3', 'qalys.disc0')

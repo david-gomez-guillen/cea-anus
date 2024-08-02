@@ -14,19 +14,19 @@ load.all.trees <- function() {
         name <- paste0(substr(f,1,(nchar(f) - 5)), '_tca')
         t <- loadDecisionTree(paste0('models/', f))
         t$name <- name
-        assign(name, t, envir = .GlobalEnv)
+        # assign(name, t, envir = .GlobalEnv)
         trees[[name]] <- t
         
         name <- paste0(substr(f,1,(nchar(f) - 5)), '_irc')
         t <- loadDecisionTree(paste0('models/', f))
         t$name <- name
-        assign(name, t, envir = .GlobalEnv)
+        # assign(name, t, envir = .GlobalEnv)
         trees[[name]] <- t
       } else {
         # One version (followup)
         name <- substr(f,1,(nchar(f) - 5))
         t <- loadDecisionTree(paste0('models/', f))
-        assign(name, t, envir = .GlobalEnv)
+        # assign(name, t, envir = .GlobalEnv)
         trees[[name]] <- t
       }
     }
@@ -37,10 +37,10 @@ load.all.trees <- function() {
 cat('Loading trees...\n')
 trees <- load.all.trees()
 
-strategies <- trees[startsWith(names(trees), 'conventional') |
+strategies <- list()
+strategies$hiv_msm <- trees[startsWith(names(trees), 'conventional') |
                       startsWith(names(trees), 'arnm') |
                       startsWith(names(trees), 'ascus_lsil')]
-
 
 cat('Loading context(s)...\n')
 # Context loading

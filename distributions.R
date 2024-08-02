@@ -6,11 +6,11 @@ fit.parameter <- function(par, mean, sd, dist=NULL) {
     else if (dist == 'exponential') return(fit.exponential(mean))
     else stop(paste0('Distribution "', dist, '" not recognized'))
   }
-  if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', '.u_', 'u_')))) {
+  if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_')))) {
     if (mean %in% c(0,1))
       stop(paste0("A beta distribution cannot be fitted with mean ", mean, " ('", par, "')"))
     return(fit.beta(mean, sd))
-  } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_')))) {
+  } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
     return(fit.gamma(mean, sd))
   } else {
     stop(paste0('Distribution must be specified for parameter "', par, '"'))
@@ -25,9 +25,9 @@ sample.parameter <- function(par, dist.params, dist=NULL) {
     else if (dist == 'exponential') return(rexp(1, rate=dist.params$lambda))
     else stop(paste0('Distribution "', dist, '" not recognized'))
   }
-  if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', '.u_', 'u_')))) {
+  if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_')))) {
     return(rbeta(1, shape1=dist.params$alpha, shape2=dist.params$beta))
-  } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_')))) {
+  } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
     return(rgamma(1, shape=dist.params$alpha, scale=dist.params$beta))
   } else {
     stop(paste0('Distribution must be specified for parameter "', par, '"'))

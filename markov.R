@@ -14,8 +14,8 @@ INTERPOLATE.STRATA <- TRUE
 
 DISCOUNT.RATE <- .03
 
-DEFAULT.START.AGE <- 40
-DEFAULT.MAX.AGE <- 70
+START.AGE <- 40
+MAX.AGE <- 80
 
 if (INTERPOLATE.STRATA) {
   get.context.stratum <- function(strat.context, year, period) {
@@ -427,8 +427,8 @@ simulate.markov <- function(trees,
     next.state <- current.state %*% tpMatrix$strategy %*% tpMatrix$other
     
     if (any(next.state < -EPSILON)) {
-      print(trees$hiv_msm$name)
-      print(tpMatrix$strategy)
+      # print(trees$hiv_msm$name)
+      # print(tpMatrix$strategy)
       stop('States with negative populations, probabilities might have errors.')
     }
     else if (any(next.state < 0)) {
@@ -469,30 +469,35 @@ simulate <- function(type,
                      markov, 
                      strat.ctx, 
                      initial.state, 
-                     start.age, 
-                     max.age, 
+                     start.age=START.AGE, 
+                     max.age=MAX.AGE, 
                      discount.rate=DISCOUNT.RATE,
                      n.cores=1) {
   # results.df <- data.frame()
   markov.outputs <- list()
   # for(tree in strategies) {
   # registerDoFuture()
-  cl <- makeCluster(n.cores)
-  # old_plan <- plan(multisession)
-  on.exit({
-    # plan(old_plan)
-    stopCluster(cl)
-  }, add=TRUE)
-  clusterExport(cl,
-                c(ls(1)))
-  clusterEvalQ(cl, {
-    library(ggplot2)
-    library(plotly)
-  })
   # plan(multisession)
   if (n.cores==1) {
+    cl <- NULL
     pboptions(type='none')
   } else {
+    cl <- makeCluster(n.cores)
+    pboptions(type='timer')
+    on.exit({
+      # plan(old_plan)
+      stopCluster(cl)
+    }, add=TRUE)
+    export.names <- ls(1)
+    export.names <- export.names[!(startsWith(export.names, 'conventional') | 
+                                     startsWith(export.names, 'ascus') | 
+                                     startsWith(export.names, 'arnm'))]
+    clusterExport(cl,
+                  c(ls(1)))
+    clusterEvalQ(cl, {
+      library(ggplot2)
+      library(plotly)
+    })
     # pboptions(type='txt', style=3)
   }
   results <- pblapply(strategies, cl=cl, FUN=function(tree) {
