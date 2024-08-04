@@ -212,17 +212,25 @@ setup.markov <- function(trees, strat.ctx) {
 calculate.iteration.measures <- function(trees, additional.info, year, iter, current.state, tpMatrix, cost, eff, ctx) {
   strat <- trees[[1]]$name
   cs.df <- as.data.frame(current.state)
-  n_cancers <- sum(cs.df[!names(cs.df) %in% 'cancer'] * tpMatrix$strategy[!names(cs.df) %in% 'cancer', 'cancer'])
-  n_deaths_cancer <- sum(cs.df[!names(cs.df) %in% 'death_cancer'] * tpMatrix$other[!names(cs.df) %in% 'death_cancer', 'death_cancer'])
   
-  n_detected_false_hsil <- cs.df[['hiv_positive']] * sum(tpMatrix$strategy['hiv_positive', c('semestral_followup1_no_hsil', 'semestral_followup1_treatment_no_hsil')])
-  n_detected_true_hsil <- cs.df[['undetected_hsil']] * sum(tpMatrix$strategy['undetected_hsil', c('semestral_followup1_hsil', 'semestral_followup1_treatment_hsil')])
-  n_undetected_hsil <- sum(cs.df[c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2')] * tpMatrix$other[c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2'), 'undetected_hsil'])
-  n_semestral_followup_hsil <- cs.df[['undetected_hsil']] * tpMatrix$strategy['undetected_hsil', 'semestral_followup1_hsil'] +
+  n_healthy <- sum(current.state[1,c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2', 
+                                   'semestral_followup1_no_hsil', 'semestral_followup2_no_hsil', 'semestral_followup1_treatment_no_hsil',
+                                   'semestral_followup2_treatment_no_hsil', 'surgery_no_cancer')])
+  n_cancers <- sum(current.state[1,'cancer'])
+  n_hsils <- sum(current.state[1,c('semestral_followup1_hsil', 'semestral_followup2_hsil', 'semestral_followup1_treatment_hsil',
+                                   'semestral_followup2_treatment_hsil')])
+  
+  n_new_cancers <- sum(cs.df[!names(cs.df) %in% 'cancer'] * tpMatrix$strategy[!names(cs.df) %in% 'cancer', 'cancer'])
+  n_new_deaths_cancer <- sum(cs.df[!names(cs.df) %in% 'death_cancer'] * tpMatrix$other[!names(cs.df) %in% 'death_cancer', 'death_cancer'])
+  
+  n_new_detected_false_hsils <- cs.df[['hiv_positive']] * sum(tpMatrix$strategy['hiv_positive', c('semestral_followup1_no_hsil', 'semestral_followup1_treatment_no_hsil')])
+  n_new_detected_true_hsils <- cs.df[['undetected_hsil']] * sum(tpMatrix$strategy['undetected_hsil', c('semestral_followup1_hsil', 'semestral_followup1_treatment_hsil')])
+  n_new_undetected_hsils <- sum(cs.df[c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2')] * tpMatrix$other[c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2'), 'undetected_hsil'])
+  n_new_semestral_followup_hsils <- cs.df[['undetected_hsil']] * tpMatrix$strategy['undetected_hsil', 'semestral_followup1_hsil'] +
     cs.df[['undetected_hsil']] * tpMatrix$strategy['undetected_hsil', 'semestral_followup1_treatment_hsil'] 
-  n_semestral_followup_no_hsil <- cs.df[['hiv_positive']] * tpMatrix$strategy['hiv_positive', 'semestral_followup1_no_hsil'] +
+  n_new_semestral_followup_no_hsils <- cs.df[['hiv_positive']] * tpMatrix$strategy['hiv_positive', 'semestral_followup1_no_hsil'] +
     cs.df[['hiv_positive']] * tpMatrix$strategy['hiv_positive', 'semestral_followup1_treatment_no_hsil'] 
-  n_surgery_no_cancer <- sum(cs.df[!names(cs.df) %in% 'surgery_no_cancer'] * tpMatrix$strategy[!names(cs.df) %in% 'surgery_no_cancer', 'surgery_no_cancer'])
+  n_new_surgeries_no_cancer <- sum(cs.df[!names(cs.df) %in% 'surgery_no_cancer'] * tpMatrix$strategy[!names(cs.df) %in% 'surgery_no_cancer', 'surgery_no_cancer'])
   
   n_cyto <- sum(cs.df[c('hiv_positive', 
                          'undetected_hsil', 
@@ -319,14 +327,17 @@ calculate.iteration.measures <- function(trees, additional.info, year, iter, cur
                              iter=iter,
                              cost=cost,
                              eff=eff,
+                             n_healthy=n_healthy,
+                             n_hsils=n_hsils,
                              n_cancers=n_cancers,
-                             n_deaths_cancer=n_deaths_cancer,
-                             n_detected_false_hsil=n_detected_false_hsil,
-                             n_detected_true_hsil=n_detected_true_hsil,
-                             n_undetected_hsil=n_undetected_hsil,
-                             n_surgery_no_cancer=n_surgery_no_cancer,
-                             n_semestral_followup_hsil=n_semestral_followup_hsil,
-                             n_semestral_followup_no_hsil=n_semestral_followup_no_hsil,
+                             n_new_cancers=n_new_cancers,
+                             n_new_deaths_cancer=n_new_deaths_cancer,
+                             n_new_detected_false_hsils=n_new_detected_false_hsils,
+                             n_new_detected_true_hsils=n_new_detected_true_hsils,
+                             n_new_undetected_hsils=n_new_undetected_hsils,
+                             n_new_surgeries_no_cancer=n_new_surgeries_no_cancer,
+                             n_new_semestral_followup_hsils=n_new_semestral_followup_hsils,
+                             n_new_semestral_followup_no_hsils=n_new_semestral_followup_no_hsils,
                              n_cyto=n_cyto,
                              n_hpv=n_hpv,
                              n_hra_no_hsil=n_hra_no_hsil,
@@ -349,14 +360,17 @@ simulate.markov <- function(trees,
                                 iter=1,
                                 cost=0,
                                 eff=0,
+                                n_healthy=1,
+                                n_hsils=0,
                                 n_cancers=0,
-                                n_deaths_cancer=0,
-                                n_detected_false_hsil=0,
-                                n_detected_true_hsil=0,
-                                n_undetected_hsil=0,
-                                n_surgery_no_cancer=0,
-                                n_semestral_followup_hsil=0,
-                                n_semestral_followup_no_hsil=0,
+                                n_new_cancers=0,
+                                n_new_deaths_cancer=0,
+                                n_new_detected_false_hsils=0,
+                                n_new_detected_true_hsils=0,
+                                n_new_undetected_hsils=0,
+                                n_new_surgeries_no_cancer=0,
+                                n_new_semestral_followup_hsils=0,
+                                n_new_semestral_followup_no_hsils=0,
                                 n_cyto=0,
                                 n_hpv=0,
                                 n_hra_no_hsil=0,

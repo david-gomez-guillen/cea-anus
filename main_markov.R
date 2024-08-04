@@ -6,9 +6,6 @@ source('markov.R')
 cat('Running markov model...\n')
 markov.outputs <- list()
 
-START.AGE <- 40
-MAX.AGE <- 80
-
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
 markov.result <- simulate('hiv_msm',
