@@ -1,16 +1,26 @@
+BETA.PREFFIXES <- c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_', '.rate')
+GAMMA.PREFFIXES <- c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')
+
 fit.parameter <- function(par, mean, sd, dist=NULL) {
   if (!is.null(dist)) {
-    if (dist == 'beta') return(fit.beta(mean, sd))
-    else if (dist == 'lognormal') return(fit.lognormal(mean,sd))
+    if (dist == 'beta') {
+      dist.params <- fit.beta(mean, sd)
+      if (is.null(dist.params))
+        message('[', par, ']: probability with mean 0 or 1 can\'t be modeled as beta, returning NULL')
+      return(dist.params)
+    } else if (dist == 'lognormal') return(fit.lognormal(mean,sd))
     else if (dist == 'gamma') return(fit.gamma(mean,sd))
     else if (dist == 'exponential') return(fit.exponential(mean))
     else stop(paste0('Distribution "', dist, '" not recognized'))
   }
-  if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_')))) {
-    if (mean %in% c(0,1))
-      stop(paste0("A beta distribution cannot be fitted with mean ", mean, " ('", par, "')"))
-    return(fit.beta(mean, sd))
-  } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
+  if (any(startsWith(par, BETA.PREFFIXES))) {
+    # if (mean %in% c(0,1))
+    #   stop(paste0("A beta distribution cannot be fitted with mean ", mean, " ('", par, "')"))
+    dist.params <- fit.beta(mean, sd)
+    if (is.null(dist.params))
+      message('[', par, ']: probability with mean 0 or 1 can\'t be modeled as beta, returning NULL')
+    return(dist.params)
+  } else if (any(startsWith(par, GAMMA.PREFFIXES))) {
     return(fit.gamma(mean, sd))
   } else {
     stop(paste0('Distribution must be specified for parameter "', par, '"'))
@@ -18,6 +28,7 @@ fit.parameter <- function(par, mean, sd, dist=NULL) {
 }
 
 sample.parameter <- function(par, dist.params, dist=NULL) {
+  if (is.null(dist.params)) return(NULL)
   if (!is.null(dist)) {
     if (dist == 'beta') return(rbeta(1, shape1=dist.params$alpha, shape2=dist.params$beta))
     else if (dist == 'lognormal') return(exp(rnorm(1, dist.params$mean, dist.params$sd)))
@@ -25,9 +36,9 @@ sample.parameter <- function(par, dist.params, dist=NULL) {
     else if (dist == 'exponential') return(rexp(1, rate=dist.params$lambda))
     else stop(paste0('Distribution "', dist, '" not recognized'))
   }
-  if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_')))) {
+  if (any(startsWith(par, BETA.PREFFIXES))) {
     return(rbeta(1, shape1=dist.params$alpha, shape2=dist.params$beta))
-  } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
+  } else if (any(startsWith(par, GAMMA.PREFFIXES))) {
     return(rgamma(1, shape=dist.params$alpha, scale=dist.params$beta))
   } else {
     stop(paste0('Distribution must be specified for parameter "', par, '"'))
@@ -39,6 +50,10 @@ fit.exponential <- function(mean) {
 }
 
 fit.beta <- function(mean, sd) {
+  if (mean %in% c(0,1)) {
+    # Probability with mean 0 or 1 can't be modeled as beta, returning NULL
+    return(NULL)
+  }
   if (sd^2 > mean*(1-mean)) {
     # TODO: Fix somehow
     # warning('Deviation too high for beta distribution, setting to (arbitrarily) [mean*(1-mean)/2]')

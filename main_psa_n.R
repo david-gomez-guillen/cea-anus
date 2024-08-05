@@ -9,7 +9,7 @@ source('markov_psa.R')
 
 PSA.SEED <- 1234
 N.ITERS <- 1000
-N.CORES <- 24
+N.CORES <- 8
 DISCOUNT.RATE <- .03
 DEBUG <- F  # 1 core if TRUE
 
@@ -76,14 +76,14 @@ SIMULATION.OPTIONS <- list(
 )
 
 psa.pars <- list(
-  all=pars
-  ,
+  # all=pars
+  # ,
   costs=pars[startsWith(pars, 'c_')]
-  ,
-  utilities=pars[startsWith(pars, 'u_')]
-  ,
-  probs=pars[startsWith(pars, 'p_') |
-               startsWith(pars, 'survival_')]
+  # ,
+  # utilities=pars[startsWith(pars, 'u_')]
+  # ,
+  # probs=pars[startsWith(pars, 'p_') |
+  #              startsWith(pars, 'survival_')]
 )
 
 param.names <- c(
@@ -257,7 +257,7 @@ for(param.set.name in names(psa.pars)) {
       filename <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', param.set.name)
       store.results.psa(results, 'multivariate', options$population, options$strategy.name, filename)
       
-      build.plots('multivariate', 'hiv_msm', options$strategy, options$reference, strat.ctx, options, sd.estimate.name, param.set.name=param.set.name)
+      build.plots('multivariate', options$population, options$strategy, options$reference, strat.ctx, options, sd.estimate.name, suffix=param.set.name, param.set.name=param.set.name)
     }
   }
 }

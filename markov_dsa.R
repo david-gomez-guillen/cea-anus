@@ -27,6 +27,7 @@ dsa.n <- function(pars,
                   context.setup.func=NULL,
                   n.param.points=N.POINTS.DEFAULT,
                   n.cores=NULL,
+                  cluster=NULL,
                   sample.by.stratum=FALSE) {
   if (!all(pars %in% names(strat.ctx[[1]])))
     stop(paste0("Some parameters don't exist in the context: ", 
@@ -44,26 +45,6 @@ dsa.n <- function(pars,
   
   cat('****************************************\n')
   cat(paste0('Starting DSA for ', strategy, '\n'))
-  if (is.null(n.cores)) n.cores <- detectCores()
-  if (n.cores > 1) {
-    cat('Initializing cluster with', n.cores, 'cores...\n')
-    cluster <- makeCluster(n.cores)
-    on.exit({
-      # plan(old_plan)
-      stopCluster(cluster)
-    }, add=TRUE)
-    registerDoParallel(cluster)
-    clusterExport(cl=cluster,varlist=ls(pos=1),
-                  envir=environment())
-    clusterEvalQ(cl=cluster,{
-      library(data.table)
-      library(stringr)
-      library(ggplot2)
-      library(plotly)
-    })
-  } else {
-    cluster <- NULL
-  }
   
   results <- data.frame()
   simulation.strategies <- strategies[[population]]
@@ -118,8 +99,20 @@ dsa.n <- function(pars,
     E=base.strat$E,
     IE=IE,
     ICER=IC/IE,
-    n.hysterectomies_bleeding=mean(base.output$info[[strategy]]$additional.info$total_hysterectomies_bleeding),
-    incidence_bleeding=mean(base.output$info[[strategy]]$additional.info$incidence_bleeding)
+    n_cancers=mean(base.output$info[[strategy]]$additional.info$n_cancers),
+    n_new_deaths_cancer=mean(base.output$info[[strategy]]$additional.info$n_new_deaths_cancer),
+    n_new_detected_false_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_detected_false_hsils),
+    n_new_detected_true_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_detected_true_hsils),
+    n_new_undetected_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_undetected_hsils),
+    n_new_surgeries_no_cancer=mean(base.output$info[[strategy]]$additional.info$n_new_surgeries_no_cancer),
+    n_new_semestral_followup_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_semestral_followup_hsils),
+    n_new_semestral_followup_no_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_semestral_followup_no_hsils),
+    n_cyto=mean(base.output$info[[strategy]]$additional.info$n_cyto),
+    n_hpv=mean(base.output$info[[strategy]]$additional.info$n_hpv),
+    n_hra_no_hsil=mean(base.output$info[[strategy]]$additional.info$n_hra_no_hsil),
+    n_hra_hsil=mean(base.output$info[[strategy]]$additional.info$n_hra_hsil),
+    n_treatment_no_hsil=mean(base.output$info[[strategy]]$additional.info$n_treatment_no_hsil),
+    n_treatment_hsil=mean(base.output$info[[strategy]]$additional.info$n_treatment_hsil)
   ), named.strata.ctx)
   results <- rbind(results, iter.result.base)
   
@@ -155,17 +148,17 @@ dsa.n <- function(pars,
   }
   results$CE_THRESHOLD <- factor(results$CE_THRESHOLD, levels=c(WTP.THRESHOLDS, Inf))
     
-  if (n.cores > 1) stopCluster(cluster)
   cat('DSA Done\n')
   cat('****************************************\n')
   
   plt <- NULL
   plt2 <- NULL
   if (length(pars) == 1) {
-    ret <- plot.tornado(results, population, reference=reference)
+    param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
+    ret <- plot.tornado(results, population, reference=reference, param.display.names = param.display.names)
     plt <- ret[[1]]
     plt2 <- ret[[2]]
-    ret <- plot.tornado.nhb(results, population, reference=reference)
+    ret <- plot.tornado.nhb(results, population, reference=reference, param.display.names = param.display.names)
     plt.nhb <- ret[[1]]
     plt2.nhb <- ret[[2]]
     plts <- list(plt, plt2, plt.nhb, plt2.nhb)
@@ -200,6 +193,7 @@ dsa.1 <- function(pars,
                 context.setup.func=NULL,
                 n.param.points=N.POINTS.DEFAULT,
                 n.cores=1,
+                cluster=NULL,
                 sample.by.stratum=FALSE,
                 keep.all.strategies=FALSE) {
   if (!all(pars %in% names(strat.ctx[[1]])))
@@ -210,35 +204,6 @@ dsa.1 <- function(pars,
   # of base value plus the base value itself
   if (n.param.points %% 2 == 0)
     n.param.points <- n.param.points + 1
-  
-  if (n.cores > 1) {
-    cat('Initializing cluster with', n.cores, 'cores...\n')
-    cluster <- makeCluster(n.cores
-                           # ,outfile=''
-                           )
-    on.exit({
-      stopCluster(cluster)
-    }, add=TRUE)
-    registerDoParallel(cluster)
-    
-    varlist <- ls(pos=1)
-    # varlist <- varlist[!varlist %in% c('results', 'trees')]
-    # varlist <- varlist[!startsWith(varlist, 'conventional')]
-    # varlist <- varlist[!startsWith(varlist, 'ascus_lsil_diff')]
-    # varlist <- varlist[!startsWith(varlist, 'arnme6e7')]
-    
-    clusterExport(cl=cluster,varlist=varlist,
-                  envir=environment())
-    clusterEvalQ(cl=cluster,{
-      library(data.table)
-      library(stringr)
-      library(ggplot2)
-      library(plotly)
-      library(pbapply)
-    })
-  } else {
-    cluster <- NULL
-  }
   
   pars <- pars[order(pars)]
   if (is.null(range.estimate.func)) {
@@ -312,13 +277,13 @@ dsa.1 <- function(pars,
         IE=IE,
         ICER=IC/IE,
         n_cancers=mean(base.output$info[[stg]]$additional.info$n_cancers),
-        n_deaths_cancer=mean(base.output$info[[stg]]$additional.info$n_deaths_cancer),
-        n_detected_false_hsil=mean(base.output$info[[stg]]$additional.info$n_detected_false_hsil),
-        n_detected_true_hsil=mean(base.output$info[[stg]]$additional.info$n_detected_true_hsil),
-        n_undetected_hsil=mean(base.output$info[[stg]]$additional.info$n_undetected_hsil),
-        n_surgery_no_cancer=mean(base.output$info[[stg]]$additional.info$n_surgery_no_cancer),
-        n_semestral_followup_hsil=mean(base.output$info[[stg]]$additional.info$n_semestral_followup_hsil),
-        n_semestral_followup_no_hsil=mean(base.output$info[[stg]]$additional.info$n_semestral_followup_no_hsil),
+        n_new_deaths_cancer=mean(base.output$info[[stg]]$additional.info$n_new_deaths_cancer),
+        n_new_detected_false_hsils=mean(base.output$info[[stg]]$additional.info$n_new_detected_false_hsils),
+        n_new_detected_true_hsils=mean(base.output$info[[stg]]$additional.info$n_new_detected_true_hsils),
+        n_new_undetected_hsils=mean(base.output$info[[stg]]$additional.info$n_new_undetected_hsils),
+        n_new_surgeries_no_cancer=mean(base.output$info[[stg]]$additional.info$n_new_surgeries_no_cancer),
+        n_new_semestral_followup_hsils=mean(base.output$info[[stg]]$additional.info$n_new_semestral_followup_hsils),
+        n_new_semestral_followup_no_hsils=mean(base.output$info[[stg]]$additional.info$n_new_semestral_followup_no_hsils),
         n_cyto=mean(base.output$info[[stg]]$additional.info$n_cyto),
         n_hpv=mean(base.output$info[[stg]]$additional.info$n_hpv),
         n_hra_no_hsil=mean(base.output$info[[stg]]$additional.info$n_hra_no_hsil),
@@ -339,13 +304,13 @@ dsa.1 <- function(pars,
       IE=IE,
       ICER=IC/IE,
       n_cancers=mean(base.output$info[[strategy]]$additional.info$n_cancers),
-      n_deaths_cancer=mean(base.output$info[[strategy]]$additional.info$n_deaths_cancer),
-      n_detected_false_hsil=mean(base.output$info[[strategy]]$additional.info$n_detected_false_hsil),
-      n_detected_true_hsil=mean(base.output$info[[strategy]]$additional.info$n_detected_true_hsil),
-      n_undetected_hsil=mean(base.output$info[[strategy]]$additional.info$n_undetected_hsil),
-      n_surgery_no_cancer=mean(base.output$info[[strategy]]$additional.info$n_surgery_no_cancer),
-      n_semestral_followup_hsil=mean(base.output$info[[strategy]]$additional.info$n_semestral_followup_hsil),
-      n_semestral_followup_no_hsil=mean(base.output$info[[strategy]]$additional.info$n_semestral_followup_no_hsil),
+      n_new_deaths_cancer=mean(base.output$info[[strategy]]$additional.info$n_new_deaths_cancer),
+      n_new_detected_false_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_detected_false_hsils),
+      n_new_detected_true_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_detected_true_hsils),
+      n_new_undetected_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_undetected_hsils),
+      n_new_surgeries_no_cancer=mean(base.output$info[[strategy]]$additional.info$n_new_surgeries_no_cancer),
+      n_new_semestral_followup_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_semestral_followup_hsils),
+      n_new_semestral_followup_no_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_semestral_followup_no_hsils),
       n_cyto=mean(base.output$info[[strategy]]$additional.info$n_cyto),
       n_hpv=mean(base.output$info[[strategy]]$additional.info$n_hpv),
       n_hra_no_hsil=mean(base.output$info[[strategy]]$additional.info$n_hra_no_hsil),
@@ -398,10 +363,11 @@ dsa.1 <- function(pars,
   #   plot.curves=plot.curves(results[results$strategy==strategy,], pars)
   #   ))
   
-  ret <- plot.tornado(results[results$strategy==strategy,], population, reference=reference)
+  param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
+  ret <- plot.tornado(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names)
   plt <- ret[[1]]
   plt2 <- ret[[2]]
-  ret <- plot.tornado.nhb(results[results$strategy==strategy,], population, reference=reference)
+  ret <- plot.tornado.nhb(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names)
   plt.nhb <- ret[[1]]
   plt2.nhb <- ret[[2]]
   plts <- list(plt, plt2, plt.nhb, plt2.nhb)
@@ -431,41 +397,9 @@ dsa.1 <- function(pars,
                 sample.by.stratum=FALSE,
                 keep.all.strategies=FALSE) {
   cl <- cluster
-  # if (is.null(cluster)) {
-  #   if (n.cores > 1) {
-  #     cl <- makeCluster(n.cores)
-  #     on.exit({
-  #       # plan(old_plan)
-  #       stopCluster(cl)
-  #     }, add=TRUE)
-  #     registerDoParallel(cl)
-  #     clusterEvalQ(cl=cl,{
-  #       library(data.table)
-  #       library(stringr)
-  #       library(ggplot2)
-  #       library(plotly)
-  #     })
-  #     # clusterExport(cl=cl,varlist=ls(pos=1),
-  #     #               envir=environment())
-  #   } 
-  #   else {
-  #     cl <- NULL
-  #   }
-  # } else {
-  #   cl <- cluster
-  # }
-  # if (!is.null(cluster) || n.cores > 1) {
-  #   # Cluster initialized, in this function or elsewhere, exporting variables
-  #   # TODO: Remove unnecessary variables for efficiency boost
-  #   browser()
-  #   varlist <- ls(pos=1)
-  #   varlist <- varlist[!varlist %in% c('results', 'trees')]
-  #   varlist <- varlist[!startsWith(varlist, 'conventional')]
-  #   varlist <- varlist[!startsWith(varlist, 'ascus_lsil_diff')]
-  #   varlist <- varlist[!startsWith(varlist, 'arnme6e7')]
-  #   clusterExport(cl=cl,varlist=varlist,
-  #                 envir=environment())
-  # }
+  if (is.null(cluster)) pboptions(type='none')
+  else pboptions(type='timer')
+  
   if (is.null(range.estimate.func)) {
     range.estimate.func <- function(par, val) {
       if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', '.u_')))) {
@@ -538,13 +472,13 @@ dsa.1 <- function(pars,
             IE=IE,
             ICER=IC/IE,
             n_cancers=mean(dsa.output$info[[strategy]]$additional.info$n_cancers),
-            n_deaths_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_deaths_cancer),
-            n_detected_false_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_detected_false_hsil),
-            n_detected_true_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_detected_true_hsil),
-            n_undetected_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_undetected_hsil),
-            n_surgery_no_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_surgery_no_cancer),
-            n_semestral_followup_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_semestral_followup_hsil),
-            n_semestral_followup_no_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_semestral_followup_no_hsil),
+            n_new_deaths_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_new_deaths_cancer),
+            n_new_detected_false_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_detected_false_hsils),
+            n_new_detected_true_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_detected_true_hsils),
+            n_new_undetected_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_undetected_hsils),
+            n_new_surgeries_no_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_new_surgeries_no_cancer),
+            n_new_semestral_followup_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_semestral_followup_hsils),
+            n_new_semestral_followup_no_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_semestral_followup_no_hsils),
             n_cyto=mean(dsa.output$info[[strategy]]$additional.info$n_cyto),
             n_hpv=mean(dsa.output$info[[strategy]]$additional.info$n_hpv),
             n_hra_no_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_hra_no_hsil),
@@ -577,13 +511,13 @@ dsa.1 <- function(pars,
         IE=IE,
         ICER=IC/IE,
         n_cancers=mean(dsa.output$info[[strategy]]$additional.info$n_cancers),
-        n_deaths_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_deaths_cancer),
-        n_detected_false_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_detected_false_hsil),
-        n_detected_true_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_detected_true_hsil),
-        n_undetected_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_undetected_hsil),
-        n_surgery_no_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_surgery_no_cancer),
-        n_semestral_followup_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_semestral_followup_hsil),
-        n_semestral_followup_no_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_semestral_followup_no_hsil),
+        n_new_deaths_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_new_deaths_cancer),
+        n_new_detected_false_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_detected_false_hsils),
+        n_new_detected_true_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_detected_true_hsils),
+        n_new_undetected_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_undetected_hsils),
+        n_new_surgeries_no_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_new_surgeries_no_cancer),
+        n_new_semestral_followup_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_semestral_followup_hsils),
+        n_new_semestral_followup_no_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_semestral_followup_no_hsils),
         n_cyto=mean(dsa.output$info[[strategy]]$additional.info$n_cyto),
         n_hpv=mean(dsa.output$info[[strategy]]$additional.info$n_hpv),
         n_hra_no_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_hra_no_hsil),
@@ -753,7 +687,7 @@ plot.tornado <- function(results,
   labels <- sapply(breaks, function(b) plot.df[plot.df$pos==b,]$label[1])
   if (is.null(plot)) {
     plt <- ggplot(plot.df) + 
-      geom_segment(size=120/length(unique(plot.df$param)), color=bar.color, aes(x=min.v, xend=max.v, y=pos-.5, yend=pos-.5)) +
+      geom_segment(size=6, color=bar.color, aes(x=min.v, xend=max.v, y=pos, yend=pos)) +
       annotate('segment', x=base.icer,xend=base.icer,y=0,yend=length(unique(plot.df$param))+.44,
                           color='orange', 
                           linetype='dashed') +
@@ -768,10 +702,12 @@ plot.tornado <- function(results,
       #   breaks=seq(-5000,40000,5000),
       #   labels=formatC(seq(-5000,40000,5000), format='d', big.mark=',')) +
       scale_y_continuous(
-        breaks=breaks-.5,
+        breaks=breaks,
         labels=labels,
-        limits = c(1, length(unique(plot.df$param))),
+        limits = c(0, length(unique(plot.df$param))+1),
         oob=squish_infinite) +
+      theme_minimal() +
+      theme(panel.grid.minor = element_blank()) +
       ggtitle(paste0('Tornado diagram [', results$strategy[1], ' vs ', reference, '] (Base ICER = ', formatC(base.icer, digits = 0, format = 'd'), ' €/QALY)'))
   } else {
     plt <- plot +
@@ -807,6 +743,7 @@ plot.tornado.nhb <- function(results,
   results$NHB <- results$IE - results$IC/WTP
   
   base.params <- results[is.na(results$param),][1,]
+  base.nhb <- base.params$NHB
   results <- results[!is.na(results$param),]
   
   plot.df <- data.frame()
@@ -863,13 +800,13 @@ plot.tornado.nhb <- function(results,
   labels <- sapply(breaks, function(b) plot.df[plot.df$pos==b,]$label[1])
   if (is.null(plot)) {
     plt <- ggplot(plot.df) + 
-      geom_segment(size=120/length(unique(plot.df$param)), color=bar.color, aes(x=min.v, xend=max.v, y=pos-.5, yend=pos-.5)) +
-      # geom_segment(aes(x=0,xend=0,y=0,yend=length(unique(param))+.44),
-      #              color='orange', 
-      #              linetype='dashed') +
-      # geom_segment(aes(x=0,xend=0,y=length(unique(param))+.44,yend=length(unique(param))+.45), 
-      #              arrow = arrow(length=unit(0.30,"cm"), ends="last", type = "closed",), 
-      #              color='orange') +
+      geom_segment(size=6, color=bar.color, aes(x=min.v, xend=max.v, y=pos, yend=pos)) +
+      annotate('segment', x=base.nhb,xend=base.nhb,y=0,yend=length(unique(plot.df$param))+.44,
+               color='orange', 
+               linetype='dashed') +
+      annotate('segment', x=base.nhb,xend=base.nhb,y=length(unique(plot.df$param))+.44,yend=length(unique(plot.df$param))+.45, 
+               arrow = arrow(length=unit(0.30,"cm"), ends="last", type = "closed",), 
+               color='orange') +
       geom_vline(xintercept=0, color='black', linetype='dashed') +
       # geom_vline(xintercept=WTP[1], color='red', linetype=2) +
       xlab('NHB (QALY)') +
@@ -878,10 +815,12 @@ plot.tornado.nhb <- function(results,
       #   breaks=seq(-5000,40000,5000),
       #   labels=formatC(seq(-5000,40000,5000), format='d', big.mark=',')) +
       scale_y_continuous(
-        breaks=breaks-.5,
+        breaks=breaks,
         labels=labels,
-        limits = c(1, length(unique(plot.df$param))),
+        limits = c(0, length(unique(plot.df$param))+1),
         oob=squish_infinite) +
+      theme_minimal() +
+      theme(panel.grid.minor = element_blank()) +
       ggtitle(paste0('Tornado diagram [', results$strategy[1], ' vs ', reference, ']'))
   } else {
     plt <- plot +

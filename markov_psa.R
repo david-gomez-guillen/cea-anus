@@ -194,7 +194,7 @@ psa.n <- function(pars,
       initial.state <- ifelse(seq_along(markov$nodes)==1, 1, 0)
       names(initial.state) <- sapply(markov$nodes, function(n) n$name)
       psa.result <- 
-        tryCatch(
+        tryCatch({
          simulate(population,
            simulation.strategies,
            markov,
@@ -202,6 +202,7 @@ psa.n <- function(pars,
            initial.state,
            n.cores=1,
            discount.rate=discount.rate)$summary
+        }
         ,
          error=function(e) {
            message(e$message)
@@ -238,7 +239,6 @@ psa.n <- function(pars,
                           IE=IE,
                           ICER=IC/IE
                         ), named.strata.ctx)
-    browser()
       return(iter.result)
   })
   cat('Simulation done, generating results...\n')
@@ -492,7 +492,7 @@ store.results.psa <- function(results, psa.type, population, strategy.name, file
   write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
 }
 
-build.plots <- function(psa.type, population, strategy, reference, strat.ctx, sim.options, sd.estimate.name, pars=NULL, param.set.name=NULL) {
+build.plots <- function(psa.type, population, strategy, reference, strat.ctx, sim.options, sd.estimate.name, suffix, pars=NULL, param.set.name=NULL) {
   slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
   
   filename.preffix <- paste0(strategy, '__sd_', sd.estimate.name, '__par_')
@@ -504,8 +504,9 @@ build.plots <- function(psa.type, population, strategy, reference, strat.ctx, si
                      endsWith(files, paste0('__par_', param.set.name, '.csv'))   ]
   }
   if (!is.null(pars)) {
+    endsWithMulti <- Vectorize(function(x) any(endsWith(x, paste0(pars, '.csv'))), SIMPLIFY = TRUE)
     files <- files[startsWith(files, filename.preffix) &
-                     endsWith(files, '.csv') ]
+                     endsWithMulti(files) ]
   }
   time.preffix <- format(Sys.time(), "%Y_%m_%d__%H_%M_")
   
@@ -583,15 +584,16 @@ build.plots <- function(psa.type, population, strategy, reference, strat.ctx, si
                   plot.acceptability=plt.acc)
     slides <- add.results.to.slide(slides, df, plots, par, sim.options, sd.estimate.name)
   }
-  slides %>% print(paste0('output/psa_', psa.type, '/', sim.options$population, '/', strategy, '__sd_', sd.estimate.name, '__par_', param.set.name, '.pptx'))
+  slides %>% print(paste0('output/psa_', psa.type, '/', sim.options$population, '/', strategy, '__sd_', sd.estimate.name, '__par_', suffix, '.pptx'))
 }
 
 add.results.to.slide <- function(slides, summary, plots, par, sim.options, sd.estimate.name) {
   perc.ce <- mean(summary$IE > summary$IC / 25000)
   # par.name <- unname(ifelse(is.na(param.names[par]), par, param.names[par]))
   
+suppressMessages({  
   plot.scatter <- plots$plot.scatter +
-    ggtitle(paste0('Univariate PSA (', par, ') SD=', sd.estimate.name)) +
+    ggtitle(paste0('PSA (', par, ') SD=', sd.estimate.name)) +
     scale_x_continuous(labels=scales::number_format(big.mark=',')) +
     xlab(paste0('Incremental cost\n\nWTP = 25,000 €/QALY\n(', 
                 formatC(perc.ce*100, format='f', digits=1), 
@@ -602,7 +604,7 @@ add.results.to.slide <- function(slides, summary, plots, par, sim.options, sd.es
           axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)))
   
   plot.scatter.j <- plots$plot.scatter.j +
-    ggtitle(paste0('Univariate PSA (', par, ' [jitter]) SD=', sd.estimate.name)) +
+    ggtitle(paste0('PSA (', par, ' [jitter]) SD=', sd.estimate.name)) +
     scale_x_continuous(labels=scales::number_format(big.mark=',')) +
     xlab(paste0('Incremental cost\n\nWTP = 25,000 €/QALY\n(', 
                 formatC(perc.ce*100, format='f', digits=1), 
@@ -625,7 +627,7 @@ add.results.to.slide <- function(slides, summary, plots, par, sim.options, sd.es
     theme(legend.position = c(.8,.9),
           panel.grid.major = element_line(color='#f2f2f2', linetype='dashed'),
           axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)))
-  
+})  
   
   slides <- slides %>%
     add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%

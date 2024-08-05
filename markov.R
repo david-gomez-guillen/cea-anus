@@ -14,8 +14,12 @@ INTERPOLATE.STRATA <- TRUE
 
 DISCOUNT.RATE <- .03
 
-START.AGE <- 40
-MAX.AGE <- 80
+DEFAULT.START.AGE <- list(
+  hiv_msm=40
+)
+DEFAULT.MAX.AGE <- list(
+  hiv_msm=80
+)
 
 if (INTERPOLATE.STRATA) {
   get.context.stratum <- function(strat.context, year, period) {
@@ -351,8 +355,8 @@ simulate.markov <- function(trees,
                             markov,
                             initial.state, 
                             strat.ctx, 
-                            start.age=DEFAULT.START.AGE, 
-                            max.age=DEFAULT.MAX.AGE,
+                            start.age=DEFAULT.START.AGE['hiv_msm'], 
+                            max.age=DEFAULT.MAX.AGE['hiv_msm'],
                             iters.per.year=2,
                             discount.rate=DISCOUNT.RATE) {
   cat(paste0(' Simulating ', trees$hiv_msm$name, '...\n'))
@@ -483,8 +487,8 @@ simulate <- function(type,
                      markov, 
                      strat.ctx, 
                      initial.state, 
-                     start.age=START.AGE, 
-                     max.age=MAX.AGE, 
+                     start.age=DEFAULT.START.AGE[['hiv_msm']], 
+                     max.age=DEFAULT.MAX.AGE[['hiv_msm']], 
                      discount.rate=DISCOUNT.RATE,
                      n.cores=1) {
   # results.df <- data.frame()

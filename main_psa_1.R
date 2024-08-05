@@ -9,7 +9,7 @@ source('markov_psa.R')
 
 PSA.SEED <- 12345
 N.ITERS <- 1000
-N.CORES <- 24
+N.CORES <- 8
 DISCOUNT.RATE <- .03
 DEBUG <- F  # 1 core if TRUE
 
@@ -76,79 +76,14 @@ SIMULATION.OPTIONS <- list(
 )
 
 psa.pars <- list(
-  all=pars
-  ,
+  # all=pars
+  # ,
   costs=pars[startsWith(pars, 'c_')]
-  ,
-  utilities=pars[startsWith(pars, 'u_')]
-  ,
-  probs=pars[startsWith(pars, 'p_') |
-               startsWith(pars, 'survival_')]
-)
-
-param.names <- c(
-  .specificity_molecular='Molecular test specificity',
-  .sensitivity_molecular='Molecular test sensitivity',
-  .specificity_molecular_cyto='Specificity of molecular test (cytology)',
-  .sensitivity_molecular_cyto='Sensitivity of molecular test (cytology)',
-  .specificity_molecular_pipelle='Specificity of molecular test (pipelle)',
-  .sensitivity_molecular_pipelle='Sensitivity of molecular test (pipelle)',
-  u_hysterectomy='Non-cancer hysterectomy utility',
-  .p_cancer___bleeding='Prevalence of EC in women with PMB',
-  .sensitivity_tvu='Sensitivity of TVU',
-  .sensitivity_pipelle___bleeding='Sensitivity of pipelle',
-  .c_molecular_test='Cost of molecular test',
-  u_cancer='EC utility',
-  u_bleeding='PMB utility',
-  .specificity_pipelle='Specificity of pipelle',
-  .p_cancer___asymptomatic='Prevalence of EC',
-  .specificity_tvu='Specificity of TVU',
-  # .survival_5year___stage1='5-year survival (stage 1)',
-  .survival_5year='5-year EC survival',
-  .p_pipelle_success='Pipelle success probability',
-  .p_cancer_stage_1='Percentage of EC cases at stage 1',
-  .specificity_hysteroscopy___bleeding='Specificity of hysteroscopy',
-  .sensitivity_hysteroscopy___bleeding='Sensitivity of hysteroscopy',
-  .p_bmi_high='Proportion of obese women (BMI > 30)',
-  .c_tvu='Cost of TVU',
-  .c_hysterectomy___stage_1='Cost of hysterectomy, EC stage I (€)',
-  .c_hysterectomy___stage_2_4='Cost of hysterectomy, EC stage II-IV (€)',
-  c_phone_visit='Cost of phone visit',
-  .c_pipelle='Cost of pipelle',
-  .p_bleeding__cancer='Prevalence of PMB in women with EC',
-  .c_hysteroscopy='Cost of hysteroscopy',
-  .c_visit='Cost of visit',
-  .c_treatment='Cost of treatment (€)',
-  u_cancer_s1='EC utility (stage I)',
-  u_cancer_s2='EC utility (stage II)',
-  u_cancer_s3='EC utility (stage III)',
-  u_cancer_s4='EC utility (stage IV)',
-  u_undetected_cancer='Undetected EC utility',
-  .survival_5year_s1='5-year survival (stage I)',
-  .survival_5year_s2='5-year survival (stage II)',
-  .survival_5year_s3='5-year survival (stage III)',
-  .survival_5year_s4='5-year survival (stage IV)',
-  .p_bleeding='Probability of bleeding persistence',
-  .p_pipelle_tissue_success='Probability of pipelle success (tissue)',
-  .p_pipelle_insertion_success='Probability of pipelle success (insertion)',
-  .p_pipelle_insertion_success___parous='Probability of pipelle success (insertion)',
-  .rate_recurrence_s1='Recurrence rate (stage I)',
-  .rate_recurrence_s2='Recurrence rate (stage II)',
-  .rate_recurrence_s3='Recurrence rate (stage III)',
-  .rate_recurrence_s4='Recurrence rate (stage IV)',
-  .p_progression_cancer_s1_2='Annual cancer progression (stage I-II)',
-  .p_progression_cancer_s2_3='Annual cancer progression (stage II-III)',
-  .p_progression_cancer_s3_4='Annual cancer progression (stage III-IV)',
-  .p_death_other='Probability of death from other causes',
-  .c_cytology='Cost of cytology',
-  .c_first_visit='Cost of first visit',
-  .rate_prevalence='Prevalence rate of EC (global)',
-  p_death_other='Probability of death from other causes',
-  .p_bleeding___cancer='Prevalence of PMB in women with EC',
-  .hr_bmi='HR BMI',
-  .p_cancer___bleeding_pooled='Probability of EC in PMB',
-  .p_cancer___postmenopausal='Probability of EC in postmenopausal women',
-  Discount='Discount'
+  # ,
+  # utilities=pars[startsWith(pars, 'u_')]
+  # ,
+  # probs=pars[startsWith(pars, 'p_') |
+  #              startsWith(pars, 'survival_')]
 )
 
 
@@ -252,7 +187,7 @@ for(param.set.name in names(psa.pars)) {
         filename <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', par)
         store.results.psa(results, 'univariate', options$population, options$strategy.name, filename)
       }
-      build.plots('univariate', 'hiv_msm', options$strategy, options$reference, strat.ctx, options, sd.estimate.name, pars=param.set)
+      build.plots('univariate', options$population, options$strategy, options$reference, strat.ctx, options, sd.estimate.name, suffix=param.set.name, pars=param.set)
     }
   }
 }

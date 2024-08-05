@@ -10,8 +10,10 @@ set.seed(123)
 
 age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
 CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= START.AGE & age.groups < MAX.AGE]
-CALIB.PARAMS <- c('p_cancer___hsil_annual', 'p_death_other_annual', 'p_hsil_regression_annual', 'p_hsil_annual', 'survival_5year')
-TARGET.INC.HSIL <- c(0.0008297591, 0.0008232382, 0.0007680188, 0.0007309425, 0.0005847089, 0.0005029810, 0.0004630612, 0.0004417403) * 3
+CALIB.PARAMS <- c('p_cancer___hsil_annual', 'p_hsil_regression_annual', 'p_hsil_annual', 'survival_5year')
+
+# PLACEHOLDER
+TARGET.INC.HSIL <- c(0.002489277, 0.002469715, 0.002304056, 0.002192828, 0.001754127, 0.001508943, 0.001389184, 0.001325221)
 
 calibration.error <- function(pars) {
   agg.output <- calculate.outputs(pars)
@@ -94,20 +96,23 @@ ctx.to.calib.vec <- function(strat.ctx) {
   return(pars)
 }
 
+get.initial.guess <- function() {
+  return(ctx.to.calib.vec(strat.ctx))
+}
 
 ### Calibration tests
 
-res <- optim(ctx.to.calib.vec(strat.ctx), calibration.error)
-
-initial.output <- calculate.outputs(ctx.to.calib.vec(strat.ctx))$incidence_hsil
-calibrated.output <- calculate.outputs(res$par)$incidence_hsil
-
-df <- data.frame(x=rep(1:8,3),
-                 error=c(TARGET.INC.HSIL, initial.output, calibrated.output),
-                 type=c(rep('target', 8), rep('initial', 8), rep('calibrated', 8)))
-ggplot(df, aes(x=x, y=error, color=type)) + 
-  geom_line() +
-  scale_color_manual(name='HSIL incidence',
-                     breaks=c('target', 'initial', 'calibrated'),
-                     values=c('black', 'red', 'green')) +
-  theme_minimal()
+# res <- optim(ctx.to.calib.vec(strat.ctx), calibration.error)
+# 
+# initial.output <- calculate.outputs(ctx.to.calib.vec(strat.ctx))$incidence_hsil
+# calibrated.output <- calculate.outputs(res$par)$incidence_hsil
+# 
+# df <- data.frame(x=rep(1:8,3),
+#                  error=c(TARGET.INC.HSIL, initial.output, calibrated.output),
+#                  type=c(rep('target', 8), rep('initial', 8), rep('calibrated', 8)))
+# ggplot(df, aes(x=x, y=error, color=type)) + 
+#   geom_line() +
+#   scale_color_manual(name='HSIL incidence',
+#                      breaks=c('target', 'initial', 'calibrated'),
+#                      values=c('black', 'red', 'green')) +
+#   theme_minimal()
