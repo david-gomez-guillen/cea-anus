@@ -62,6 +62,13 @@ initial_guess = list(ro.globalenv['get.initial.guess']())
 target_inc_hsil = list(ro.globalenv['get.initial.guess']())
 calibration_error = ro.globalenv['calibration.error']
 
+dim = len(initial_guess)
+N_INIT = 10
+N_ITERATIONS = 200
+NUM_RESTARTS = 10
+RAW_SAMPLES = 512
+N_CANDIDATES = min(5000, max(2000, 200 * dim))
+
 SEARCH_SCOPE = 1
 bu = torch.minimum(torch.tensor(initial_guess) * (1+SEARCH_SCOPE), torch.tensor(1))
 bl = torch.tensor(initial_guess) * (1-SEARCH_SCOPE)
@@ -94,12 +101,9 @@ def get_target_func():
 params = [('x{}'.format(i), '') for i, _ in enumerate(initial_guess)]
 target_func = get_target_func()
 
-dim = len(initial_guess)
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Running on {device}")
 dtype = torch.double
-n_init = 10
 max_cholesky_size = float("inf")  # Always use Cholesky
 
 
@@ -288,14 +292,14 @@ def increase_embedding_and_observations(
 # In[7]:
 
 
-S = embedding_matrix(10, 2)
-X = torch.randint(100, (7, 2))
-print(f"S before increase\n{S}")
-print(f"X before increase\n{X}")
+#S = embedding_matrix(10, 2)
+#X = torch.randint(100, (7, 2))
+#print(f"S before increase\n{S}")
+#print(f"X before increase\n{X}")
 
-S, X = increase_embedding_and_observations(S, X, 3)
-print(f"S after increase\n{S}")
-print(f"X after increase\n{X}")
+#S, X = increase_embedding_and_observations(S, X, 3)
+#print(f"S after increase\n{S}")
+#print(f"X after increase\n{X}")
 
 
 # ## Take a look at the state
@@ -303,8 +307,8 @@ print(f"X after increase\n{X}")
 # In[8]:
 
 
-state = BaxusState(dim=dim, eval_budget=500)
-print(state)
+#state = BaxusState(dim=dim, eval_budget=N_ITERATIONS)
+#print(state)
 
 
 # ## Generate initial points
@@ -337,9 +341,9 @@ def create_candidate(
     X,  # Evaluated points on the domain [-1, 1]^d
     Y,  # Function values
     n_candidates=None,  # Number of candidates for Thompson sampling
-    num_restarts=10,
-    raw_samples=512,
-    acqf="ts",  # "ei" or "ts"
+    num_restarts=NUM_RESTARTS,
+    raw_samples=RAW_SAMPLES,
+    acqf="ei",  # "ei" or "ts"
 ):
     assert acqf in ("ts", "ei")
     assert X.min() >= -1.0 and X.max() <= 1.0 and torch.all(torch.isfinite(Y))
@@ -398,25 +402,21 @@ def create_candidate(
 # In[11]:
 
 
-evaluation_budget = 100
 calib_start_time = timer()
 
-state = BaxusState(dim=dim, eval_budget=evaluation_budget - n_init)
+state = BaxusState(dim=dim, eval_budget=N_ITERATIONS - N_INIT)
 S = embedding_matrix(input_dim=state.dim, target_dim=state.d_init)
 
-X_baxus_target = get_initial_points(state.d_init, n_init)
+X_baxus_target = get_initial_points(state.d_init, N_INIT)
 X_baxus_input = X_baxus_target @ S
 Y_baxus = torch.tensor(
     [target_func(x) for x in X_baxus_input], dtype=dtype, device=device
 ).unsqueeze(-1)
 
-NUM_RESTARTS = 10
-RAW_SAMPLES = 512
-N_CANDIDATES = min(5000, max(2000, 200 * dim))
 
 # Disable input scaling checks as we normalize to [-1, 1]
 with botorch.settings.validate_input_scaling(False):
-    for _ in range(evaluation_budget - n_init):  # Run until evaluation budget depleted
+    for _ in range(N_ITERATIONS - N_INIT):  # Run until evaluation budget depleted
 
         start = timer()
         # Fit a GP model
@@ -474,7 +474,7 @@ with botorch.settings.validate_input_scaling(False):
         end = timer()
         # Print current status
         print(
-            f"iteration {len(X_baxus_input)}, d={len(X_baxus_target.T)})  ({(end-start):.3f} s) Best value: {state.best_value:.3}, TR length: {state.length:.3}"
+            f"iteration {len(X_baxus_input)}, d={len(X_baxus_target.T)})  ({(end-start):.3f} s) Best value: {-state.best_value:.3}, TR length: {state.length:.3}"
         )
 
         if state.restart_triggered:

@@ -1,7 +1,7 @@
 library(dplyr)
 library(ggplot2)
 
-setwd('~/Documents/models_ce/anus')
+# setwd('~/Documents/models_ce/anus')
 
 source('load_models.R')
 source('markov.R')
@@ -9,19 +9,53 @@ source('markov.R')
 set.seed(123)
 
 age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
-CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= START.AGE & age.groups < MAX.AGE]
+CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= DEFAULT.START.AGE$hiv_msm & age.groups < DEFAULT.MAX.AGE$hiv_msm]
 CALIB.PARAMS <- c('p_cancer___hsil_annual', 'p_hsil_regression_annual', 'p_hsil_annual', 'survival_5year')
 
 # PLACEHOLDER
 TARGET.INC.HSIL <- c(0.002489277, 0.002469715, 0.002304056, 0.002192828, 0.001754127, 0.001508943, 0.001389184, 0.001325221)
 
-calibration.error <- function(pars) {
-  agg.output <- calculate.outputs(pars)
-  if (!is.null(agg.output)) {
-    sim.inc.hsil <- agg.output$incidence_hsil
-    sim.prev.hsil <- agg.output$prevalence_hsil
+ # Source: "A meta‐analysis of anal cancer incidence by risk group: Toward a unified anal cancer risk scale"
+ # Ages: 30-44, 45-59, >=60
+# TARGET.INC.AC <- c(66.2, 99.7, 107.5) / 100000
+target.df <- data.frame(x=c(37, 52, 70), y=c(66.2, 99.7, 107.5)/100000)
+lin.interp <- function(x) {
+  ret.values <- sapply(x, function(xi) {
+    if (xi < target.df$x[1]) {
+      ind <- 1
+    } else if (xi >= target.df$x[nrow(target.df)]) {
+      ind <- nrow(target.df) - 1
+    } else {
+      ind <- which(target.df$x > xi)[1] - 1
+    }
     
-    error <- sum((sim.inc.hsil - TARGET.INC.HSIL)^2)
+    slope <- (target.df$y[ind+1]-target.df$y[ind]) / (target.df$x[ind+1] - target.df$x[ind])
+    intercept <- target.df$y[ind] - slope * target.df$x[ind]
+    return(intercept + slope*xi)
+  })
+  return(ret.values)
+}
+x <- 40:79
+df <- data.frame(x=x, y=lin.interp(x), group=c(sapply(1:8, function(i) rep(i, 5))))
+df <- df %>% group_by(group) %>% summarise_at(vars(y), list(inc.avg=mean))
+TARGET.INC.AC <- df$inc.avg
+# TARGET.INC.AC <- lin.interp(seq(40,79,5))
+
+eval.count <- 0
+
+calibration.error <- function(pars) {
+  result <- run.calib.simulation(pars)
+  eval.count <<- eval.count + 1
+  # agg.output <- calculate.outputs(result)
+  
+  if (!is.null(result)) {
+    # sim.inc.hsil <- agg.output$incidence_hsil
+    # sim.prev.hsil <- agg.output$prevalence_hsil
+    # 
+    # error <- sum((sim.inc.hsil - TARGET.INC.HSIL)^2)
+    
+    ac.inc <- calculate.ac.incidence(result)
+    error <- sum((((ac.inc - TARGET.INC.AC)/TARGET.INC.AC)^2))
   } else {
     error <- 1e10
   }
@@ -29,7 +63,24 @@ calibration.error <- function(pars) {
   return(error)
 }
 
-calculate.outputs <- function(pars) {
+calculate.ac.incidence <- function(par) {
+  if(is.list(par)) {
+    markov.result <- par
+  } else {
+    markov.result <- run.calib.simulation(par)
+  }
+  output <- markov.result$info[[1]]$additional.info[c('year', 'n_healthy', 'n_hsils', 'n_cancers', 'n_new_cancers')]
+
+  output$incidence_cancer <- output$n_new_cancers / apply(output[2:4], 1, sum)
+
+  output$age.group <- cut(output$year, c(seq(40,79,5), 200), right=FALSE, labels=FALSE)
+  agg.output <- output %>% 
+    group_by(age.group) %>% 
+    summarise_at(c('incidence_cancer'), mean)
+  return(agg.output$incidence_cancer)
+}
+
+run.calib.simulation <- function(pars) {
   initial.state <- sapply(markov$nodes,
                           function(n) if (n$name=='hiv_positive') 1 else 0)
   
@@ -45,7 +96,15 @@ calculate.outputs <- function(pars) {
                                      discount.rate=.03),
                             error=function(e) NULL)
   sink()
-  
+  return(markov.result)
+}
+
+calculate.outputs <- function(par) {
+  if(is.list(par)) {
+    markov.result <- par
+  } else {
+    markov.result <- run.calib.simulation(par)
+  }
   if (!is.null(markov.result)) {
     output <- markov.result$info[[1]]$additional.info[c('n_healthy', 'n_hsils', 'n_cancers', 'n_new_cancers', 'n_new_deaths_cancer', 'n_new_detected_false_hsils', 'n_new_detected_true_hsils')]
     output <- output[c(-1),]
@@ -100,19 +159,34 @@ get.initial.guess <- function() {
   return(ctx.to.calib.vec(strat.ctx))
 }
 
+calibrated.params <- c(-0.0139209272984589, 0.21232154057876, 0.364071566588375, 0.717170166876237, -0.0622384853973795, 0.314116846940157, 0.186051428946503, 0.740628449313684, -0.135785937725696, 0.14925722025157, 0.243267527370599, 0.685908114352199, -0.0893746736930389, 0.0358020274651913, 0.0126455789263969, 0.650912765904558, -0.0330301253200985, 0.0647795838910365, 0.0927301615440421, 0.674989033250804, 0.168174095163349, 0.0586796353790068, 0.0909229577061081, 0.624857773495392, -0.149165565705991, 0.06126115901712, 0.0809641281482692, 0.662236155916717, 0.0400284915095845, 0.0555599660575189, 0.106234844080886, 0.582454650757503)
+
 ### Calibration tests
 
-# res <- optim(ctx.to.calib.vec(strat.ctx), calibration.error)
+# eval.count <- 0
+# initial.guess <- ctx.to.calib.vec(strat.ctx)
+# start.time <- Sys.time()
+# res <- optim(res$par,
+#              calibration.error,
+#              # method='L-BFGS-B',
+#              # lower=initial.guess*0.5,
+#              # upper=pmin(1, initial.guess*1.5),
+#              control=list(parscale=rep(1e1, length(initial.guess))))
+# cat('Elapsed time: ', as.numeric(difftime(Sys.time(), start.time, units='min')), ' min')
+# cat('Evaluations: ', eval.count)
+# initial.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
+# calibrated.output <- calculate.ac.incidence(res$par)
 # 
-# initial.output <- calculate.outputs(ctx.to.calib.vec(strat.ctx))$incidence_hsil
-# calibrated.output <- calculate.outputs(res$par)$incidence_hsil
-# 
-# df <- data.frame(x=rep(1:8,3),
-#                  error=c(TARGET.INC.HSIL, initial.output, calibrated.output),
-#                  type=c(rep('target', 8), rep('initial', 8), rep('calibrated', 8)))
-# ggplot(df, aes(x=x, y=error, color=type)) + 
+# N <- length(initial.output)
+# df <- data.frame(x=rep(1:N,3),
+#                  error=c(TARGET.INC.AC, initial.output, calibrated.output),
+#                  type=c(rep('target', N), rep('initial', N), rep('calibrated', N)))
+# plt <- ggplot(df, aes(x=x, y=error, color=type)) +
 #   geom_line() +
-#   scale_color_manual(name='HSIL incidence',
+#   scale_x_continuous(breaks=1:8, labels=paste0(40+((1:8)-1)*5, '-', 40+((2:9)-1)*5)) +
+#   coord_cartesian(ylim=c(0, 0.0012)) +
+#   scale_color_manual(name='AC incidence',
 #                      breaks=c('target', 'initial', 'calibrated'),
 #                      values=c('black', 'red', 'green')) +
 #   theme_minimal()
+# ggplotly(plt)

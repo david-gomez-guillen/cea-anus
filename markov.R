@@ -360,7 +360,7 @@ simulate.markov <- function(trees,
                             iters.per.year=2,
                             discount.rate=DISCOUNT.RATE) {
   cat(paste0(' Simulating ', trees$hiv_msm$name, '...\n'))
-  additional.info <- data.frame(year=start.age-1, 
+  additional.info <- data.frame(year=start.age, 
                                 iter=1,
                                 cost=0,
                                 eff=0,
@@ -457,7 +457,8 @@ simulate.markov <- function(trees,
     }
     current.state <- next.state
   }
-  states$age <- as.numeric(row.names(states)) + start.age - 1
+  
+  states$age <- (as.numeric(row.names(states))-1)*(max.age-start.age)/n.periods + start.age
   melted.states <- reshape2::melt(states, id.vars='age')
   
   strategy.name <- paste0(sapply(trees, function(t) t$name), collapse = '-')

@@ -1,5 +1,5 @@
 library(dplyr)
-setwd('~/Documents/models_ce/anus')
+#setwd('~/Documents/models_ce/anus')
 source('load_models.R')
 source('markov.R')
 
