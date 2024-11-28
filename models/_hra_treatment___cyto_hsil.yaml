@@ -27,7 +27,7 @@ hra:
             - semestral_followup_hsil_treatment:
                 # Cyto and HRA HSIL
                 # HRA HSIL -> Treatment
-                in_transition: hsil
+                in_transition: HRA HSIL
                 description: Treatment -> Semestral followup
                 cost: c_followup_treatment
                 sensitivity: 1
@@ -41,7 +41,7 @@ hra:
                         description: No HSIL (treatment)
             - semestral_followup_hsil:
                 # Cyto HSIL, HRA no HSIL -> diagnosis = HSIL
-                in_transition: no hsil
+                in_transition: HRA no HSIL
                 description: Semestral followup
                 cost: c_followup
                 sensitivity: 1

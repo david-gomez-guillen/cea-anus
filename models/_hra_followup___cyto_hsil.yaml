@@ -19,14 +19,35 @@ hra:
                 description: No cancer
     - semestral_followup:
         in_transition: no invasive cancer
-        description: Semestral followup
-        cost: c_followup
-        sensitivity: 1
-        specificity: 1
+        description: HRA result
+        cost: 0
+        sensitivity: p_hra_hsil___cyto_hsil__hsil
+        specificity_c: p_hra_hsil___cyto_hsil__no_hsil
         children:
-            - semestral_followup_hsil:
-                in_transition: hsil
-                description: HSIL
-            - semestral_followup_no_hsil:
-                in_transition: no hsil
-                description: No HSIL
+            - semestral_followup:
+                in_transition: HRA HSIL
+                description: Semestral followup
+                cost: c_followup
+                sensitivity: 1
+                specificity: 1
+                children:
+                    - semestral_followup_hsil___hra:
+                        in_transition: hsil
+                        description: HSIL (HRA diagnosis)
+                        # Count as HSIL incidence only if confirmed by HRA
+                    - semestral_followup_no_hsil___hra:
+                        in_transition: no hsil
+                        description: No HSIL (HRA diagnosis)
+            - semestral_followup:
+                in_transition: HRA no HSIL
+                description: Semestral followup
+                cost: c_followup
+                sensitivity: 1
+                specificity: 1
+                children:
+                    - semestral_followup_hsil:
+                        in_transition: hsil
+                        description: HSIL
+                    - semestral_followup_no_hsil:
+                        in_transition: no hsil
+                        description: No HSIL

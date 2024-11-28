@@ -31,12 +31,13 @@ hra:
                 sensitivity: 1
                 specificity: 1
                 children:
-                    - semestral_followup_hsil:
+                    - semestral_followup_hsil___hra:
                         in_transition: hsil
-                        description: HSIL
-                    - semestral_followup_no_hsil:
+                        description: HSIL (HRA diagnosis)
+                        # Count as HSIL incidence only if confirmed by HRA
+                    - semestral_followup_no_hsil___hra:
                         in_transition: no hsil
-                        description: No HSIL
+                        description: No HSIL (HRA diagnosis)
             - annual_followup:
                 in_transition: HRA no HSIL
                 description: Annual followup
