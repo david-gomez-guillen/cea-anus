@@ -20,7 +20,7 @@ load.all.trees <- function() {
         t$name <- name
         # assign(name, t, envir = .GlobalEnv)
         trees[[name]] <- t
-        
+
         name <- paste0(substr(f,1,(nchar(f) - 5)), '_irc')
         t <- loadDecisionTree(paste0('models/', f))
         t$name <- name
@@ -51,7 +51,7 @@ strategies$hiv_msm <- trees[
 
 # strategies$hiv_msm <- trees[c('no_intervention', 'conventional')]
 # strategies$hiv_msm <- trees[1:5]
-  
+
 cat('Loading context(s)...\n')
 # Context loading
 context.setup <- function(strat.ctx) {
@@ -81,7 +81,7 @@ if (file.exists(strat.ctx.hash.file) && readLines(strat.ctx.hash.file) == md5sum
     excel.strata.df.full[[stratum]] <- read.xlsx(strat.ctx.path, sheetName = stratum, keepFormulas = T)
   }
   strat.ctx <- refresh.context(c(), full.strat.ctx, excel.strata.df, context.setup)
-  
+
   # Save data for faster loading next time if unchanged
   saveRDS(full.strat.ctx, file='params/_full.strat.ctx.RData')
   saveRDS(full.strat.metadata, file='params/_full.strat.metadata.RData')
@@ -93,11 +93,11 @@ if (file.exists(strat.ctx.hash.file) && readLines(strat.ctx.hash.file) == md5sum
 
 
 calib.vec.to.ctx <- function(pars, strat.ctx) {
-  
+
   calib.strat.ctx <- strat.ctx
-  
+
   if (length(pars) != length(CALIB.AGE.GROUPS) * length(CALIB.PARAMS)) stop('Parameter vector with wrong length for calibration')
-  
+
   ix <- 1
   for(ag in CALIB.AGE.GROUPS) {
     for(p in CALIB.PARAMS) {
@@ -105,22 +105,31 @@ calib.vec.to.ctx <- function(pars, strat.ctx) {
       ix <- ix + 1
     }
   }
-  
+
   calib.strat.ctx <- refresh.context(CALIB.PARAMS, calib.strat.ctx, excel.strata.df)
   return(calib.strat.ctx)
 }
 
-if (UPDATE.CALIBRATED.PARAMS) {
-  cat('Calibrated parameters enabled, updating context...\n')
-  
+get.calibrated.params <- function() {
+  return(c('p_cancer___hsil_annual'))
+}
+
+update.calibrated.params <- function(strat.ctx) {
   DEFAULT.CALIBRATED.START.AGE <- 40
   DEFAULT.CALIBRATED.MAX.AGE <- 80
   age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
   CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= DEFAULT.CALIBRATED.START.AGE & age.groups < DEFAULT.CALIBRATED.MAX.AGE]
   CALIB.PARAMS <- c('p_cancer___hsil_annual')
   CALIB.VALUES <- c(0.0058691355195081, 0.00344980252811424, 0.00324775583133558, 0.00258766335262408, 0.00193687668776452, 0.0018456703895995, 0.00184691109687812, 0.0018916537948187)
-  
+
   strat.ctx <- calib.vec.to.ctx(CALIB.VALUES, strat.ctx)
+  refresh.context(CALIB.PARAMS, strat.ctx, excel.strata.df)
+  return(strat.ctx)
+}
+
+if (UPDATE.CALIBRATED.PARAMS) {
+  cat('Calibrated parameters enabled, updating context...\n')
+  strat.ctx <- update.calibrated.params(strat.ctx)
 }
 
 base.ctx <- lapply(strat.ctx[[1]], function(l)l[1])

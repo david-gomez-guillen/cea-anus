@@ -5,22 +5,25 @@ setwd('~/Documents/models_ce/anus')
 source('load_models.R')
 source('markov_dsa.R')
 
-N.PARAM.POINTS.TORNADO <- 7
+N.PARAM.POINTS.TORNADO <- 3
 DISCOUNT.RATE <- .03
 N.CORES <- 8
-DEBUG <- F  # 1 core if TRUE
+
+DEFAULT.START.AGE <- list(hiv_msm=40)
+DEFAULT.MAX.AGE <- list(hiv_msm=80)
 
 EXCLUDED.PARAMS <- names(strat.ctx$y25_29[strat.ctx$y25_29 %in% c(0,1)])
-EXCLUDED.PARAMS <- c(EXCLUDED.PARAMS, 
-                     'periodicity_months'
+EXCLUDED.PARAMS <- c(EXCLUDED.PARAMS,
+                     'periodicity_months',
+                     'periodicity_times_in_year'
                      )
 
 pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
 dsa.pars <- list(
-  costs=pars[startsWith(pars, '.c_') |
-             startsWith(pars, 'c_')]
+  # costs=pars[startsWith(pars, '.c_') |
+  #            startsWith(pars, 'c_')]
   # ,
   # utilities=pars[startsWith(pars, '.u_') |
   #                startsWith(pars, 'u_')]
@@ -37,9 +40,9 @@ dsa.pars <- list(
   #                    function(p)
   #                      any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
   # ,
-  # not_ranged=pars[!sapply(pars,
-  #                         function(p)
-  #                           any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
+  not_ranged=pars[!sapply(pars,
+                          function(p)
+                            any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
 )
 
 GET.RANGE.FUNC <- function(range) {
@@ -86,29 +89,27 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
   # not_ranged_5=GET.RANGE.FUNC(.05)
   # ,
   not_ranged_10=GET.RANGE.FUNC(.1)
-  # ,
-  # not_ranged_20=GET.RANGE.FUNC(.2)
-  # ,
+  ,
+  not_ranged_20=GET.RANGE.FUNC(.2)
+  ,
   # not_ranged_25=GET.RANGE.FUNC(.25)
   # ,
-  # not_ranged_50=GET.RANGE.FUNC(.5)
+  not_ranged_50=GET.RANGE.FUNC(.5)
 )
 
 SIMULATION.OPTIONS <- list(
   followup=list(
     population='hiv_msm',
-    reference='conventional',
-    strategy='ascus_lsil_diff_arnme6e7_16',
-    reference.name='Conventional',
-    strategy.name='ASCUS/LSIL diff (ARNmE6E7)'
+    reference='conventional_t_tca',
+    strategy='arnme6e7_hpvhr_t_tca',
+    display.name='ARN HPV-HR (TCA)'
   )
   # ,
   # treatment=list(
   #   population='hiv_msm',
   #   reference='conventional_t_tca',
   #   strategy='ascus_lsil_diff_arnme6e7_16_t_tca',
-  #   reference.name='Conventional (TCA)',
-  #   strategy.name='ASCUS/LSIL diff - ARNME6E7 16 (TCA)'
+  #   display.name='ASCUS/LSIL diff - ARNME6E7 16 (TCA)'
   # )
 )
 
@@ -118,15 +119,38 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
   suppressWarnings(dir.create(output.dir, recursive=TRUE))
   write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
   for(i in seq_along(results$plots)) {
-    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', i, '.pdf'), height = 1.3684+0.3158*nrow(results$plots[[i]]$data)) 
+    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', i, '.pdf'))
     print(results$plots[[i]])
     dev.off()
+    # ggsave(paste0(output.dir, '/', filename, '_', i, '.pdf'),
+    #        plot = results$plots[[i]],
+    #        width = 300,
+    #        height = 200,
+    #        units = 'mm',
+    #        device = 'pdf'
+    #        # device = 'cairo_pdf'
+    # )
   }
+  # ggsave(paste0(output.dir, '/', filename, '_2.pdf'),
+  #        plot = results$plot2,
+  #        width = 300,
+  #        height = 200,
+  #        units = 'mm',
+  #        device = 'pdf'#cairo_pdf
+  # )
   if (dsa.type == 'univariate') {
     for(par in names(results$plot.curves)) {
-      grDevices::cairo_pdf(paste0(output.dir, '/', filename, '__', par, '.pdf')) 
+      grDevices::cairo_pdf(paste0(output.dir, '/', filename, '__', par, '.pdf'))
       print(results$plot.curves[[par]])
       dev.off()
+      # ggsave(paste0(output.dir, '/', filename, '__', par, '.pdf'),
+      #        plot = results$plot.curves[[par]],
+      #        width = 300,
+      #        height = 200,
+      #        units = 'mm',
+      #        device = 'pdf'
+      #        # device = 'cairo_pdf'
+      # )
     }
   }
   if (dsa.type != 'bivariate') {
@@ -137,63 +161,32 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
                               libdir=paste0(output.dir, '/lib'))
     }
   }
-  
+
 }
 
 ######################## Univariate DSA
 
-trees.all <- trees
-
-if (DEBUG) {
-  n.cores <- 1
-  cl <- NULL
-} else {
+args <- commandArgs(trailingOnly=TRUE)
+if (length(args) == 0) {
   n.cores <- N.CORES
-  cat('Initializing cluster with', n.cores, 'cores...\n')
-  out.file <- ifelse(Sys.getenv('SLURM_JOB_ID') == '', 'workers.out', paste0('workers-', Sys.getenv('SLURM_JOB_ID'), '.out'))
-  cl <- makeCluster(n.cores, outfile=out.file)
-  on.exit({
-    stopCluster(cl)
-  }, add=TRUE)
-  registerDoParallel(cl)
-  
-  varlist <- ls(pos=1)
-  varlist <- varlist[!varlist %in% c('trees', 'strategies')]
-  
-  clusterExport(cl=cl,varlist=varlist,
-                envir=environment())
-  clusterEvalQ(cl=cl,{
-    library(data.table)
-    library(stringr)
-    library(ggplot2)
-    library(plotly)
-    library(pbapply)
-  })
+} else {
+  n.cores <- as.numeric(args[1])
 }
-
-if (is.null(cl)) {
-  pboptions(type='none') 
-} else pboptions(type='timer')
-
+# cluster <- makeCluster(n.cores, outfile='')
+# on.exit({
+#   stopCluster(cluster)
+# }, add=TRUE)
+#registerDoParallel(cluster)
+cluster <- NULL
 cat('********** STARTING UNIVARIATE SENSITIVITY ANALYSIS **********\n')
 start <- Sys.time()
 
 for(param.set.name in names(dsa.pars)) {
   param.set <- dsa.pars[[param.set.name]]
-  trees <- trees.all
-  
   for(option.name in names(SIMULATION.OPTIONS)) {
     options <- SIMULATION.OPTIONS[[option.name]]
     for(range.estimate.name in names(RANGE.ESTIMATE.FUNCTIONS)) {
       range.estimate.func <- RANGE.ESTIMATE.FUNCTIONS[[range.estimate.name]]
-      
-      if (!is.null(cl)) {
-        # We prune the 'tree' list to avoid copying it to each process
-        trees <- trees[names(trees) %in% c(options$strategy, options$reference) | startsWith(names(trees), 'semestral_')]
-        clusterExport(cl=cl,varlist=c('param.set', 'options', 'range.estimate.func', 'trees'),
-                      envir=environment())
-      }
-      
       results <- dsa.1(param.set, strat.ctx,
                        options$population, options$strategy,
                        markov,
@@ -201,12 +194,11 @@ for(param.set.name in names(dsa.pars)) {
                        excel.file = 'params/context.xlsx',
                        n.param.points = N.PARAM.POINTS.TORNADO,
                        n.cores = n.cores,
-                       cluster = cl,
                        range.estimate=range.estimate.func,
                        context.setup.func=context.setup,
                        discount.rate = DISCOUNT.RATE)
-      filename <- paste0(options$strategy, '__range_', range.estimate.name, '_params_', param.set.name)
-      store.results.dsa(results, 'univariate', options$population, options$strategy.name, filename)
+      filename <- paste0(options$strategy.name, '__range_', range.estimate.name, '_params_', param.set.name)
+      store.results.dsa(results, 'univariate', options$population, options$display.name, filename)
     }
   }
 }
@@ -269,7 +261,7 @@ PARAMETER.PAIRS <- list(
 #                        context.setup.func=context.setup,
 #                        discount.rate = DISCOUNT.RATE)
 #       filename <- paste0(options$strategy.name, '__range_', range.estimate.name, '__params_', paste0(parameter.pair, collapse='_'))
-#       store.results.dsa(results, 'bivariate', options$population, options$strategy.name, filename)
+#       store.results.dsa(results, 'bivariate', options$population, options$display.name, filename)
 #     }
 #   }
 # }
@@ -307,7 +299,7 @@ N.PARAM.POINTS.SCATTER <- 2
 #                        context.setup.func=context.setup,
 #                        discount.rate = DISCOUNT.RATE))
 #       filename <- paste0(options$strategy.name, '__range_', range.estimate.name, '__params_', paste0(parameter.pair, collapse='_'))
-#       store.results.dsa(results, 'multivariate', options$population, options$strategy.name, filename)
+#       store.results.dsa(results, 'multivariate', options$population, options$display.name, filename)
 #     }
 #   }
 # }

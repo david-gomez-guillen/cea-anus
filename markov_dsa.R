@@ -30,7 +30,7 @@ dsa.n <- function(pars,
                   cluster=NULL,
                   sample.by.stratum=FALSE) {
   if (!all(pars %in% names(strat.ctx[[1]])))
-    stop(paste0("Some parameters don't exist in the context: ", 
+    stop(paste0("Some parameters don't exist in the context: ",
                 paste0('"', pars[!pars %in% names(strat.ctx[[1]])], '"', collapse = ', ')))
   pars <- pars[order(pars)]
   if (is.null(range.estimate.func)) {
@@ -42,10 +42,10 @@ dsa.n <- function(pars,
       }
     }
   }
-  
+
   cat('****************************************\n')
   cat(paste0('Starting DSA for ', strategy, '\n'))
-  
+
   results <- data.frame()
   simulation.strategies <- strategies[[population]]
   strategy.names <- sapply(strategies[[population]], function(s) s$name)
@@ -65,7 +65,7 @@ dsa.n <- function(pars,
   cat(paste0('- ', paste0(pars, collapse = ', '), '\n'))
   cat('\n')
   cat('Simulating base case...\n')
-  
+
   if (!is.null(context.setup.func))
     strat.ctx <- context.setup.func(strat.ctx)
   base.output <- simulate(population,
@@ -82,11 +82,11 @@ dsa.n <- function(pars,
   IC <- base.strat$C - base.ref$C
   IE <- base.strat$E - base.ref$E
   cat(paste0('Base ICER=', formatC(IC/IE, big.mark = ',', digits = 0, format = 'd'), ' €/QALY\n'))
-  named.strata.ctx <- lapply(names(strat.ctx), 
+  named.strata.ctx <- lapply(names(strat.ctx),
                              function(stratum) {
                                names(strat.ctx[[stratum]]) <- paste0(stratum,
                                                                      '_',
-                                                                     names(strat.ctx[[stratum]])); 
+                                                                     names(strat.ctx[[stratum]]));
                                # Only returning the first value for each parameter
                                return(lapply(strat.ctx[[stratum]], function(p)p[1]))
                              })
@@ -115,14 +115,14 @@ dsa.n <- function(pars,
     n_treatment_hsil=mean(base.output$info[[strategy]]$additional.info$n_treatment_hsil)
   ), named.strata.ctx)
   results <- rbind(results, iter.result.base)
-  
+
   # excel.strata.df <- list()
   # strata <- names(xlsx::getSheets(xlsx::loadWorkbook(excel.file)))
   # cat('Reading parameters from excel data...\n')
   # for(stratum in strata) {
   #   excel.strata.df[[stratum]] <- read.xlsx(excel.file, sheetName = stratum, keepFormulas = T)[,c(1,2)]
   # }
-  
+
   cat('******************\n')
   cat(paste0('Simulating DSA for ', paste0(pars, collapse=', '), '\n'))
   p.results <- .dsa.n(pars,
@@ -139,18 +139,18 @@ dsa.n <- function(pars,
                       cluster=cluster,
                       sample.by.stratum=sample.by.stratum,
                       keep.all.strategies=keep.all.strategies)
-  
+
   results <- rbind(results, p.results)
-  
+
   results$CE_THRESHOLD <- Inf
   for(wtp in rev(WTP.THRESHOLDS)) {
     results$CE_THRESHOLD <- ifelse(results$IE >= results$IC / wtp, wtp, results$CE_THRESHOLD)
   }
   results$CE_THRESHOLD <- factor(results$CE_THRESHOLD, levels=c(WTP.THRESHOLDS, Inf))
-    
+
   cat('DSA Done\n')
   cat('****************************************\n')
-  
+
   plt <- NULL
   plt2 <- NULL
   if (length(pars) == 1) {
@@ -158,6 +158,7 @@ dsa.n <- function(pars,
     ret <- plot.tornado(results, population, reference=reference, param.display.names = param.display.names)
     plt <- ret[[1]]
     plt2 <- ret[[2]]
+
     ret <- plot.tornado.nhb(results, population, reference=reference, param.display.names = param.display.names)
     plt.nhb <- ret[[1]]
     plt2.nhb <- ret[[2]]
@@ -169,10 +170,10 @@ dsa.n <- function(pars,
     plt <- plot.scatter(results, population, reference=reference)
     plts <- list(plt)
   }
-  
+
   if (length(pars) == 1) plot.curves <- plot.curves(results, pars)
   else plot.curves <- NULL
-  
+
   return(list(
     summary=results,
     plots=plts,
@@ -197,14 +198,14 @@ dsa.1 <- function(pars,
                 sample.by.stratum=FALSE,
                 keep.all.strategies=FALSE) {
   if (!all(pars %in% names(strat.ctx[[1]])))
-    stop(paste0("Some parameters don't exist in the context: ", 
+    stop(paste0("Some parameters don't exist in the context: ",
                 paste0('"', pars[!pars %in% names(strat.ctx[[1]])], '"', collapse = ', ')))
 
   # Forcing odd number of points to get equal number of points to each side
   # of base value plus the base value itself
   if (n.param.points %% 2 == 0)
     n.param.points <- n.param.points + 1
-  
+
   pars <- pars[order(pars)]
   if (is.null(range.estimate.func)) {
     range.estimate.func <- function(par, val) {
@@ -215,9 +216,9 @@ dsa.1 <- function(pars,
       }
     }
   }
-  
+
   results <- data.frame()
-  
+
   simulation.strategies <- strategies[[population]]
   strategy.names <- sapply(strategies[[population]], function(s) s$name)
   simulation.strategies <- simulation.strategies[strategy.names %in% c(reference, strategy)]
@@ -238,9 +239,10 @@ dsa.1 <- function(pars,
   cat(paste0('- ', paste0(pars, collapse = ', '), '\n'))
   cat('\n')
   cat('Simulating base case...\n')
+
   if (!is.null(context.setup.func))
     strat.ctx <- context.setup.func(strat.ctx)
-  
+
   base.output <- simulate(population,
                           simulation.strategies,
                           markov,
@@ -255,11 +257,11 @@ dsa.1 <- function(pars,
   IC <- base.strat$C - base.ref$C
   IE <- base.strat$E - base.ref$E
   cat(paste0('Base ICER=', formatC(IC/IE, big.mark = ',', digits = 0, format = 'd'), ' €/QALY\n'))
-  named.strata.ctx <- lapply(names(strat.ctx), 
+  named.strata.ctx <- lapply(names(strat.ctx),
                              function(stratum) {
                                names(strat.ctx[[stratum]]) <- paste0(stratum,
                                                                          '_',
-                                                                         names(strat.ctx[[stratum]])); 
+                                                                         names(strat.ctx[[stratum]]));
                                # Only returning the first value for each parameter
                                return(lapply(strat.ctx[[stratum]], function(p)p[1]))
                              })
@@ -321,21 +323,21 @@ dsa.1 <- function(pars,
     iter.result.base$param <- NA
     results <- rbind(results, iter.result.base)
   }
-  
+
   # excel.strata.df <- list()
   # strata <- names(xlsx::getSheets(xlsx::loadWorkbook(excel.file)))
   # cat('Reading parameters from excel data...\n')
   # for(stratum in strata) {
   #   excel.strata.df[[stratum]] <- read.xlsx(excel.file, sheetName = stratum, keepFormulas = T)[,c(1,2)]
   # }
-  
+
   for(p in pars) {
     cat('******************\n')
     cat(paste0('Simulating DSA for ', p, '\n'))
     excel.strata.df.copy <- lapply(excel.strata.df, function(df) {
       return(data.frame(df))
     })
-    
+
     p.results <- .dsa.n(p,
                        strat.ctx,
                        excel.strata.df.copy,
@@ -362,8 +364,9 @@ dsa.1 <- function(pars,
   #   plot=plot.tornado(results[results$strategy==strategy,], population, reference=reference),
   #   plot.curves=plot.curves(results[results$strategy==strategy,], pars)
   #   ))
-  
+
   param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
+
   ret <- plot.tornado(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names)
   plt <- ret[[1]]
   plt2 <- ret[[2]]
@@ -371,9 +374,9 @@ dsa.1 <- function(pars,
   plt.nhb <- ret[[1]]
   plt2.nhb <- ret[[2]]
   plts <- list(plt, plt2, plt.nhb, plt2.nhb)
-  
+
   plot.curves <- plot.curves(results[results$strategy==strategy,], pars)
-  
+
   return(list(
     summary=results,
     plots=plts,
@@ -399,7 +402,7 @@ dsa.1 <- function(pars,
   cl <- cluster
   if (is.null(cluster)) pboptions(type='none')
   else pboptions(type='timer')
-  
+
   if (is.null(range.estimate.func)) {
     range.estimate.func <- function(par, val) {
       if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', '.u_')))) {
@@ -412,7 +415,7 @@ dsa.1 <- function(pars,
   if (is.null(reference)) {
     reference <- POPULATION.REFERENCES[[population]]
   }
-  
+
   simulation.strategies <- strategies[[population]]
   strategy.names <- sapply(strategies[[population]], function(s) s$name)
   simulation.strategies <- simulation.strategies[strategy.names %in% c(reference, strategy)]
@@ -420,7 +423,7 @@ dsa.1 <- function(pars,
   strat.dist.params <- .fit.dsa.params(strat.ctx, range.estimate.func)
   cat(paste0('Simulating ', ifelse(length(pars)==1, n.param.points, paste0(n.param.points, '^', length(pars))), ' DSA points for parameter(s) ', paste0(pars, collapse=', '), '...\n'))
   param.grid <- do.call('expand.grid', lapply(pars, function(x)seq(0,n.param.points-1)))
-  
+
   results <- pblapply(cl=cl, X=seq(nrow(param.grid)), FUN=function(i) {
     intervals <- as.numeric(param.grid[i,])
     dsa.strat.ctx <- sample.dsa.params(pars,
@@ -432,11 +435,12 @@ dsa.1 <- function(pars,
                                         sample.by.stratum=sample.by.stratum)
     if (!is.null(context.setup.func))
       dsa.strat.ctx <- context.setup.func(dsa.strat.ctx)
-    
+
     if (is.null(initial.state)) {
       initial.state <- ifelse(seq_along(markov$nodes)==1, 1, 0)
       names(initial.state) <- sapply(markov$nodes, function(n) n$name)
     }
+
     dsa.output <- simulate(population,
                            simulation.strategies,
                            markov,
@@ -453,11 +457,11 @@ dsa.1 <- function(pars,
         dsa.strat <- dsa.result[startsWith(dsa.result$strategy, stg),]
         IC <- dsa.strat$C - dsa.ref$C
         IE <- dsa.strat$E - dsa.ref$E
-        named.strata.ctx <- lapply(names(dsa.strat.ctx), 
+        named.strata.ctx <- lapply(names(dsa.strat.ctx),
                                    function(stratum) {
                                      names(dsa.strat.ctx[[stratum]]) <- paste0(stratum,
                                                                                '_',
-                                                                               names(dsa.strat.ctx[[stratum]])); 
+                                                                               names(dsa.strat.ctx[[stratum]]));
                                      dsa.strat.ctx[[stratum]]
                                    })
         named.strata.ctx <- lapply(named.strata.ctx, function(x) lapply(x, function(y)y[1]))  # FIX: Why is this necessary?
@@ -487,7 +491,7 @@ dsa.1 <- function(pars,
             n_treatment_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_treatment_hsil)
           ), named.strata.ctx)
         )
-      }  
+      }
     } else {
       dsa.ref <- dsa.result[startsWith(dsa.result$strategy, reference),]
       dsa.strat <- dsa.result[startsWith(dsa.result$strategy, strategy),]
@@ -531,7 +535,7 @@ dsa.1 <- function(pars,
   cat('Simulation done, generating results...\n')
   if (is.null(cluster) && !is.null(cl)) stopCluster(cl)  # Stopping the cluster only if it was created here
   results <- do.call(rbind, results)
-  
+
   cat('All done\n')
   cat('******************\n')
   cat('\n')
@@ -580,12 +584,12 @@ sample.dsa.params <- function(pars, intervals, n.points, strat.dist.params, stra
 }
 
 
-plot.tornado <- function(results, 
-                         population, 
-                         reference, 
-                         WTP=c(22000, 25000), 
-                         param.order=NULL, 
-                         param.display.names=NULL, 
+plot.tornado <- function(results,
+                         population,
+                         reference,
+                         WTP=c(22000, 25000),
+                         param.order=NULL,
+                         param.display.names=NULL,
                          show.points=FALSE,
                          truncate.icers=NULL,
                          bar.color='blue',
@@ -598,7 +602,7 @@ plot.tornado <- function(results,
   base.params <- results[is.na(results$param),][1,]
   base.icer <- base.params$ICER
   results <- results[!is.na(results$param),]
-  
+
   plot.df <- data.frame()
   scatter.df <- data.frame()
   for(p in unique(results$param)) {
@@ -682,17 +686,17 @@ plot.tornado <- function(results,
   ordered.pars <- plot.df[!duplicated(plot.df$param), 'param']
   plot.df$pos <- sapply(plot.df$param, function(p) match(p, ordered.pars))
   scatter.df$pos <- sapply(scatter.df$param, function(p)plot.df[plot.df$param==p,]$pos[1])
-  
+
   breaks <- seq(max(plot.df$pos))
   labels <- sapply(breaks, function(b) plot.df[plot.df$pos==b,]$label[1])
   if (is.null(plot)) {
-    plt <- ggplot(plot.df) + 
+    plt <- ggplot(plot.df) +
       geom_segment(size=6, color=bar.color, aes(x=min.v, xend=max.v, y=pos, yend=pos)) +
       annotate('segment', x=base.icer,xend=base.icer,y=0,yend=length(unique(plot.df$param))+.44,
-                          color='orange', 
+                          color='orange',
                           linetype='dashed') +
-      annotate('segment', x=base.icer,xend=base.icer,y=length(unique(plot.df$param))+.44,yend=length(unique(plot.df$param))+.45, 
-                          arrow = arrow(length=unit(0.30,"cm"), ends="last", type = "closed",), 
+      annotate('segment', x=base.icer,xend=base.icer,y=length(unique(plot.df$param))+.44,yend=length(unique(plot.df$param))+.45,
+                          arrow = arrow(length=unit(0.30,"cm"), ends="last", type = "closed",),
                           color='orange') +
       geom_vline(xintercept=0, color='black') +
       # geom_vline(xintercept=WTP[1], color='red', linetype=2) +
@@ -713,25 +717,25 @@ plot.tornado <- function(results,
     plt <- plot +
       geom_segment(data=plot.df, size=3, color=bar.color, aes(x=min.v, xend=max.v, y=pos, yend=pos))
   }
-  
+
   if (length(WTP) == 2) {
-    plt <- plt + 
+    plt <- plt +
       # geom_vline(xintercept=WTP[2], color='red', linetype=2) +
       annotate("rect", xmin = WTP[1], xmax = WTP[2], ymin = 0, ymax = length(unique(plot.df$param)), alpha = .3) +
       annotate('text', label='COST-EFFECTIVENESS THRESHOLD', x=(WTP[2]+WTP[1])/2, y=length(unique(plot.df$param))/2, angle=90, size=2)
   }
-  
+
   plt.w.points <- plt + geom_point(data=scatter.df, mapping=aes(x=icer, y=pos), color='yellow')
-  
+
   return(list(plt, plt.w.points))
 }
 
-plot.tornado.nhb <- function(results, 
-                         population, 
-                         reference, 
-                         WTP=22000, 
-                         param.order=NULL, 
-                         param.display.names=NULL, 
+plot.tornado.nhb <- function(results,
+                         population,
+                         reference,
+                         WTP=22000,
+                         param.order=NULL,
+                         param.display.names=NULL,
                          show.points=FALSE,
                          truncate.icers=NULL,
                          bar.color='blue',
@@ -741,11 +745,11 @@ plot.tornado.nhb <- function(results,
     results <- read.csv(results)
   }
   results$NHB <- results$IE - results$IC/WTP
-  
+
   base.params <- results[is.na(results$param),][1,]
   base.nhb <- base.params$NHB
   results <- results[!is.na(results$param),]
-  
+
   plot.df <- data.frame()
   scatter.df <- data.frame()
   for(p in unique(results$param)) {
@@ -795,17 +799,17 @@ plot.tornado.nhb <- function(results,
   ordered.pars <- plot.df[!duplicated(plot.df$param), 'param']
   plot.df$pos <- sapply(plot.df$param, function(p) match(p, ordered.pars))
   scatter.df$pos <- sapply(scatter.df$param, function(p)plot.df[plot.df$param==p,]$pos[1])
-  
+
   breaks <- seq(max(plot.df$pos))
   labels <- sapply(breaks, function(b) plot.df[plot.df$pos==b,]$label[1])
   if (is.null(plot)) {
-    plt <- ggplot(plot.df) + 
+    plt <- ggplot(plot.df) +
       geom_segment(size=6, color=bar.color, aes(x=min.v, xend=max.v, y=pos, yend=pos)) +
       annotate('segment', x=base.nhb,xend=base.nhb,y=0,yend=length(unique(plot.df$param))+.44,
-               color='orange', 
+               color='orange',
                linetype='dashed') +
-      annotate('segment', x=base.nhb,xend=base.nhb,y=length(unique(plot.df$param))+.44,yend=length(unique(plot.df$param))+.45, 
-               arrow = arrow(length=unit(0.30,"cm"), ends="last", type = "closed",), 
+      annotate('segment', x=base.nhb,xend=base.nhb,y=length(unique(plot.df$param))+.44,yend=length(unique(plot.df$param))+.45,
+               arrow = arrow(length=unit(0.30,"cm"), ends="last", type = "closed",),
                color='orange') +
       geom_vline(xintercept=0, color='black', linetype='dashed') +
       # geom_vline(xintercept=WTP[1], color='red', linetype=2) +
@@ -826,16 +830,16 @@ plot.tornado.nhb <- function(results,
     plt <- plot +
       geom_segment(data=plot.df, size=3, color=bar.color, aes(x=min.v, xend=max.v, y=pos, yend=pos))
   }
-  
+
   # if (length(WTP) == 2) {
-  #   plt <- plt + 
+  #   plt <- plt +
   #     # geom_vline(xintercept=WTP[2], color='red', linetype=2) +
   #     annotate("rect", xmin = WTP[1], xmax = WTP[2], ymin = 0, ymax = length(unique(plot.df$param)), alpha = .3) +
   #     annotate('text', label='COST-EFFECTIVENESS THRESHOLD', x=(WTP[2]+WTP[1])/2, y=length(unique(plot.df$param))/2, angle=90, size=2)
   # }
-  
+
   plt.w.points <- plt + geom_point(data=scatter.df, mapping=aes(x=nhb, y=pos), color='yellow')
-  
+
   return(list(plt, plt.w.points))
 }
 
@@ -846,11 +850,11 @@ plot.curves <- function(results, pars, icer.limits=c(-1e5,1e5), WTP=c(20000, 250
       res <- results
       res <- res[res$param==p,]
       res <- res[-1,]
-      
+
       res$par.val <- res[,paste0('y25_29_', p)]
       res$color <- ifelse(res$IE < 0 & res$IC > 0, 'red', 'black')
       res$color <- ifelse(res$IE > 0 & res$IC < 0, 'green', res$color)
-      plt <- ggplot(res, aes(x=par.val, y=ICER)) + geom_line() + 
+      plt <- ggplot(res, aes(x=par.val, y=ICER)) + geom_line() +
             geom_point(aes(color=color)) +
             geom_hline(yintercept=WTP[1], color='red', linetype=2) +
             coord_cartesian(ylim=icer.limits) +
@@ -859,13 +863,13 @@ plot.curves <- function(results, pars, icer.limits=c(-1e5,1e5), WTP=c(20000, 250
             theme(legend.position='none') +
             geom_hline(yintercept = 0, color='black') +
             ggtitle(p)
-      
+
       if (length(WTP) == 2) {
-        plt <- plt + 
+        plt <- plt +
           geom_hline(yintercept=WTP[2], color='red', linetype=2) +
           annotate("rect", ymin = WTP[1], ymax = WTP[2], xmin = min(res$par.val), xmax = max(res$par.val), alpha = .3)
       }
-      
+
       if (!is.null(base.value)) {
         plt <- plt +
           geom_vline(xintercept = base.value, color='grey', linetype=2)
@@ -877,12 +881,12 @@ plot.curves <- function(results, pars, icer.limits=c(-1e5,1e5), WTP=c(20000, 250
 
 plot.heatmap <- function(pars, results, population, reference, WTP=20000) {
   if (length(pars) != 2) stop('Heatmaps can only be done for pairs of parameters')
-  
+
   if (is.character(results)) {
     # If character, assume it is a file path with the results data
     results <- read.csv(results)
-  } 
-  
+  }
+
   base.icer <- results[1,'ICER']
   selected.params.indices <- rep(F, ncol(results))
   for(par in pars) {
@@ -892,18 +896,18 @@ plot.heatmap <- function(pars, results, population, reference, WTP=20000) {
   hm.params <- hm.params[seq(length(pars))]
   df <- results[-1, c('ICER', 'IE', hm.params)]
   names(df) <- c('ICER', 'IE', pars)
-  
+
   df[df$ICER < 0, 'ICER'] <- NA
-  
-  plt <- ggplot(df, aes_string(x=pars[1], y=pars[2])) + 
+
+  plt <- ggplot(df, aes_string(x=pars[1], y=pars[2])) +
     geom_tile(aes(fill=ICER)) +
-    scale_fill_gradient2(low='green', 
-                         mid='white', 
-                         high='red', 
+    scale_fill_gradient2(low='green',
+                         mid='white',
+                         high='red',
                          na.value = 'black', # TODO: Differentiate between IE > 0 and IE < 0
                          midpoint=base.icer) +
     ggtitle(paste0('Heatmap [', results$strategy[1], ' vs ', reference, '] (Base ICER = ', formatC(base.icer, digits = 0, format = 'd'), ' €/QALY)'))
-  
+
   return(plt)
 }
 
@@ -913,14 +917,14 @@ plot.scatter <- function(results, population, reference) {
     results <- read.csv(results)
     results$CE_THRESHOLD <- factor(results$CE_THRESHOLD, levels=c(WTP.THRESHOLDS, Inf))
   }
-  ce.labels <- c(paste0('<= ', formatC(WTP.THRESHOLDS, big.mark = ',', format='d')), 
+  ce.labels <- c(paste0('<= ', formatC(WTP.THRESHOLDS, big.mark = ',', format='d')),
                  paste0('> ', formatC(WTP.THRESHOLDS[length(WTP.THRESHOLDS)], big.mark = ',', format='d')))
-  
+
   lines.df <- data.frame(wtp=factor(WTP.THRESHOLDS, levels=levels(results$CE_THRESHOLD)))
-  
+
   plt <- ggplot(results, aes(x=IC, y=IE, color=CE_THRESHOLD)) +
     geom_abline(data=lines.df, mapping=aes(slope=1/as.numeric(as.character(wtp)), intercept=0, color=wtp)) +
-    geom_point() + 
+    geom_point() +
     xlim(c(min(results$IC, 0), max(results$IC, 0))) +
     ylim(c(min(results$IE, 0), max(results$IE, 0))) +
     scale_color_manual(name='ICER (€/QALY)',
@@ -928,6 +932,6 @@ plot.scatter <- function(results, population, reference) {
                        labels=ce.labels,
                        values=COLOR.PALETTE) +
     ggtitle(paste0(results$strategy[1], ' vs ', reference))
-  
+
   return(plt)
 }
