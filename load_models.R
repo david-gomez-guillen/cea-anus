@@ -6,7 +6,10 @@ source('distributions.R')
 source('excel_params.R')
 
 ### CALIBRATION SETTINGS (see below)
-UPDATE.CALIBRATED.PARAMS <- T
+# NOT WORKING CORRECTLY WHEN PERFORMING SA
+# UPDATED VALUES DIRECTLY ON EXCEL FILE
+# TODO: Fix it
+UPDATE.CALIBRATED.PARAMS <- F
 ###
 
 load.all.trees <- function() {
@@ -114,12 +117,13 @@ get.calibrated.params <- function() {
   return(c('p_cancer___hsil_annual'))
 }
 
+DEFAULT.CALIBRATED.START.AGE <- 40
+DEFAULT.CALIBRATED.MAX.AGE <- 80
+age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
+CALIB.PARAMS <- c('p_cancer___hsil_annual')
+CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= DEFAULT.CALIBRATED.START.AGE & age.groups < DEFAULT.CALIBRATED.MAX.AGE]
+
 update.calibrated.params <- function(strat.ctx) {
-  DEFAULT.CALIBRATED.START.AGE <- 40
-  DEFAULT.CALIBRATED.MAX.AGE <- 80
-  age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
-  CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= DEFAULT.CALIBRATED.START.AGE & age.groups < DEFAULT.CALIBRATED.MAX.AGE]
-  CALIB.PARAMS <- c('p_cancer___hsil_annual')
   CALIB.VALUES <- c(0.0058691355195081, 0.00344980252811424, 0.00324775583133558, 0.00258766335262408, 0.00193687668776452, 0.0018456703895995, 0.00184691109687812, 0.0018916537948187)
 
   strat.ctx <- calib.vec.to.ctx(CALIB.VALUES, strat.ctx)
@@ -130,6 +134,8 @@ update.calibrated.params <- function(strat.ctx) {
 if (UPDATE.CALIBRATED.PARAMS) {
   cat('Calibrated parameters enabled, updating context...\n')
   strat.ctx <- update.calibrated.params(strat.ctx)
+} else {
+  cat('Calibrated parameters disabled, using original context...\n')
 }
 
 base.ctx <- lapply(strat.ctx[[1]], function(l)l[1])

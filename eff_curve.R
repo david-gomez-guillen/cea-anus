@@ -11,9 +11,12 @@ nudge.x.icer <- .01
 nudge.y.icer <- .005
 
 
-arn.cost.values <- c(6, 25)
-discount.values <- c(0, .03)
-delayed.cancer.cost.values <- c(0, 100, 3189)
+# arn.cost.values <- c(6, 25)
+# discount.values <- c(0, .03)
+# delayed.cancer.cost.values <- c(0, 100, 3189)
+arn.cost.values <- c(6)
+discount.values <- c(0.03)
+delayed.cancer.cost.values <- c(3189)
 
 markov.results <- list()
 
@@ -25,7 +28,7 @@ for(discount in discount.values) {
       ctx['c_surgery_delayed'] <- delayed.cancer.cost
       ctx
     })
-    
+
     initial.state <- sapply(markov$nodes,
                             function(n) if (n$name=='hiv_positive') 1 else 0)
     markov.result <- simulate('hiv_msm',
@@ -34,33 +37,33 @@ for(discount in discount.values) {
                               strat.ctx.i,
                               initial.state,
                               discount.rate=discount)
-    
+
     # Remove redundant suffix for strategy names
     markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
-    
-    
-    
-    
-    
+
+
+
+
+
     x.label <- ifelse(is.null(cost.label), "Cost", paste0("Cost [€]"))
-    y.label <- ifelse(is.null(eff.label), "Effectiveness", 
+    y.label <- ifelse(is.null(eff.label), "Effectiveness",
                       paste0("Effectiveness [QALY]"))
-    ce.label <- ifelse(is.null(cost.label) && is.null(eff.label), 
+    ce.label <- ifelse(is.null(cost.label) && is.null(eff.label),
                        "", paste0(" ", cost.label, "/", eff.label))
     fullSummary <- markov.result$summary
-    
+
     # fullSummary <- fullSummary[grepl('la', fullSummary$strategy, perl=TRUE) | grepl('diff_hpv16', fullSummary$strategy, perl=TRUE),]
-    # fullSummary <- fullSummary[grepl('arnm', fullSummary$strategy, perl=TRUE) | 
+    # fullSummary <- fullSummary[grepl('arnm', fullSummary$strategy, perl=TRUE) |
     #                              grepl('^conventional-', fullSummary$strategy, perl=TRUE) |
     #                              grepl('^conventional_t-', fullSummary$strategy, perl=TRUE),]
     # fullSummary <- fullSummary[grepl('_t$', fullSummary$strategy, perl=TRUE),]
     fullSummary <- analyzeCE(fullSummary, plot=TRUE)$summary
-    
+
     plot.df <- fullSummary
-    undominated.df <- fullSummary[fullSummary$domination == 
+    undominated.df <- fullSummary[fullSummary$domination ==
                                     "undominated", ]
     if (nrow(undominated.df) > 0) {
-      undominated.df$label <- paste0("ICER=", formatC(round(undominated.df$ICER, 
+      undominated.df$label <- paste0("ICER=", formatC(round(undominated.df$ICER,
                                                             digits = 2), big.mark = ",", format = "d"), ce.label)
       undominated.df[1, "label"] <- ""
     } else {
@@ -68,12 +71,12 @@ for(discount in discount.values) {
     }
     y.range <- diff(range(plot.df$E))
     x.range <- diff(range(plot.df$C))
-    plt <- ggplot2::ggplot(plot.df, ggplot2::aes(x = C, 
-                                                 y = E)) + ggplot2::geom_line(data = undominated.df) + 
-      ggplot2::geom_text(data = undominated.df, mapping = ggplot2::aes(label = label), 
-                         nudge_x = -nudge.x.icer * x.range, nudge_y = nudge.y.icer * 
+    plt <- ggplot2::ggplot(plot.df, ggplot2::aes(x = C,
+                                                 y = E)) + ggplot2::geom_line(data = undominated.df) +
+      ggplot2::geom_text(data = undominated.df, mapping = ggplot2::aes(label = label),
+                         nudge_x = -nudge.x.icer * x.range, nudge_y = nudge.y.icer *
                            y.range)
-    
+
     strat.names <- c(
       'no_intervention',
       'conventional',
@@ -122,7 +125,7 @@ for(discount in discount.values) {
       'ascus_lsil_diff_arnme6e7_hpv161845_t_tca',
       'ascus_lsil_diff_arnme6e7_hpvhr_t_tca'
     )
-    
+
     strat.labels <- c(
       'No intervention',
       'Conventional',
@@ -171,13 +174,13 @@ for(discount in discount.values) {
       'ASCUS/LSIL diff (ARNmE6/E7 HPV-16/18/45) [T=TCA]',
       'ASCUS/LSIL diff (ARNmE6/E7 HPV-HR) [T=TCA]'
     )
-    
+
     names(strat.labels) <- strat.names
-    
+
     # strat.shapes <- c(22, 25, 25, 24, 24, 23, 23, 23, 23, 23, 23)
     strat.shapes <- c(15, rep(22, 5), rep(23, 3), rep(24, 7), rep(22, 5), rep(23, 3), rep(24, 7), rep(22, 5), rep(23, 3), rep(24, 7))
     names(strat.shapes) <- strat.names
-    
+
     # strat.fill <- c('black', '#00ccff', '#0000ff', '#00ff00', '#007700', '#6f0e18', '#961b1e', '#b91f26', '#ee3f3f', '#f48e8a', '#f9c7c2')
     strat.fill <- c('black', rep(c(
       '#ffffcc',
@@ -198,24 +201,24 @@ for(discount in discount.values) {
       ), 3
     ))
     names(strat.fill) <- strat.names
-    
+
     strat.colors <- c('black', rep('black', 15), rep('red', 15), rep('blue', 15))
     names(strat.colors) <- strat.names
-    
+
     strat.indices <- strat.names %in% fullSummary$strategy
     strat.names <- strat.names[strat.indices]
     strat.colors <- strat.colors[strat.indices]
     strat.fill <- strat.fill[strat.indices]
     strat.shapes <- strat.shapes[strat.indices]
-    
+
     fullSummary$strategy <- factor(fullSummary$strategy, levels=strat.names, ordered=TRUE)
-    
-    plt <- plt + 
-      geom_point(data=fullSummary, size=5, aes(fill=strategy, color=strategy, shape=strategy), stroke=1) + 
+
+    plt <- plt +
+      geom_point(data=fullSummary, size=5, aes(fill=strategy, color=strategy, shape=strategy), stroke=1) +
       scale_shape_manual(values=strat.shapes,
                          labels=strat.labels,
                          name='Strategy') +
-      scale_color_manual(values=strat.colors, 
+      scale_color_manual(values=strat.colors,
                          labels=strat.labels,
                          name='Strategy') +
       scale_fill_manual(values=strat.fill,
@@ -225,18 +228,18 @@ for(discount in discount.values) {
       # coord_cartesian(ylim=c(16.94, 16.96))
     # print(plt)
     # ggplotly(plt)
-    ggsave(paste0('output/results/eff_disc_', discount, '_c_arn_', arn.cost, '_c_cancer_delayed_', delayed.cancer.cost, '.png'), 
-           plt,
-           width=5000,
-           height=3000,
-           units = 'px')
+    # ggsave(paste0('output/results/eff_disc_', discount, '_c_arn_', arn.cost, '_c_cancer_delayed_', delayed.cancer.cost, '.png'),
+    #        plt,
+    #        width=5000,
+    #        height=3000,
+    #        units = 'px')
     }
   }
 }
 
 # display.df <- fullSummary
 # display.df$strategy <- mapvalues(display.df$strategy, strat.names, strat.labels)
-# 
+#
 # results.df <- do.call(rbind, lapply(markov.result$info, function(strat) {
 #   sapply(names(strat$additional.info), function(x) {
 #     ind <- which(names(strat$additional.info) == x)
@@ -261,7 +264,7 @@ for(discount in discount.values) {
 # results.df$year <- NULL
 # results.df$iter <- NULL
 # # View(results.df)
-# 
+#
 # # strat.base.names <- c("arnme6e7_hpv16",
 # #                       "arnme6e7_hpv16",
 # #                       "arnme6e7_hpv16",
@@ -308,22 +311,22 @@ for(discount in discount.values) {
 # #                       "conventional",
 # #                       "conventional",
 # #                       "no_intervention")
-# 
+#
 # tab1 <- results.df[,c('n_cyto', 'n_hpv')]
-# 
+#
 # tab1$n_cyto100k <- tab1$n_cyto * 1e5
 # tab1$n_hpv100k <- tab1$n_hpv * 1e5
-# 
+#
 # tab2 <- results.df[,c('n_new_detected_false_hsils', 'n_new_detected_true_hsils', 'n_new_undetected_hsils')]
 # tab2$n_total_hsils <- tab2$n_new_detected_true_hsils + tab2$n_new_undetected_hsils
-# 
+#
 # tab3 <- results.df[, c('n_hra_no_hsil', 'n_hra_hsil')] * 1e5
 # tab3$n_hra_total <- tab3$n_hra_no_hsil + tab3$n_hra_hsil
 # tab3$n_hra_total_person <- tab3$n_hra_total / 1e5
-# 
+#
 # tab4 <- results.df[, c('n_new_semestral_followup_no_hsils', 'n_new_semestral_followup_hsils')]
-# 
+#
 # tab5 <- results.df[, c('n_treatment_no_hsil', 'n_treatment_hsil', 'n_new_surgeries_no_cancer')]
-# 
+#
 # tab6 <- results.df[, c('n_new_cancers', 'n_new_cancers_delayed', 'n_new_deaths_cancer')]
 # tab6$n_new_cancers_total <- tab6$n_new_cancers + tab6$n_new_cancers_delayed

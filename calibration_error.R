@@ -220,36 +220,44 @@ initial.guess <- ctx.to.calib.vec(strat.ctx)
 # calibrated.params <- c(-0.0139209272984589, 0.21232154057876, 0.364071566588375, 0.717170166876237, -0.0622384853973795, 0.314116846940157, 0.186051428946503, 0.740628449313684, -0.135785937725696, 0.14925722025157, 0.243267527370599, 0.685908114352199, -0.0893746736930389, 0.0358020274651913, 0.0126455789263969, 0.650912765904558, -0.0330301253200985, 0.0647795838910365, 0.0927301615440421, 0.674989033250804, 0.168174095163349, 0.0586796353790068, 0.0909229577061081, 0.624857773495392, -0.149165565705991, 0.06126115901712, 0.0809641281482692, 0.662236155916717, 0.0400284915095845, 0.0555599660575189, 0.106234844080886, 0.582454650757503)
 # calibrated.params <- res$par
 
-calibrated.params <- CALIB.VALUES
+calibrated.params <- c(0.0058691355195081, 0.00344980252811424, 0.00324775583133558, 0.00258766335262408, 0.00193687668776452, 0.0018456703895995, 0.00184691109687812, 0.0018916537948187)
+uncalibrated.params <- rep(1/131, 8)
 
-initial.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
-calibrated.output <- calculate.ac.incidence(calibrated.params)
 
-initial.output.hsil <- calculate.hsil.incidence(ctx.to.calib.vec(strat.ctx))
-calibrated.output.hsil <- calculate.hsil.incidence(calibrated.params)
+# initial.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
+# calibrated.output <- calculate.ac.incidence(calibrated.params)
+# 
+# initial.output.hsil <- calculate.hsil.incidence(ctx.to.calib.vec(strat.ctx))
+# calibrated.output.hsil <- calculate.hsil.incidence(calibrated.params)
+
+initial.output <- calculate.ac.incidence(uncalibrated.params)
+calibrated.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
+
+initial.output.hsil <- calculate.hsil.incidence(uncalibrated.params)
+calibrated.output.hsil <- calculate.hsil.incidence(ctx.to.calib.vec(strat.ctx))
 
 N <- length(initial.output)
 df <- data.frame(x=c(
-                     # 1:N,
-                     # rep(1:N, 2),
+                     1:N,
+                     rep(1:N, 2),
                      rep(1:N, 2),
                      NULL
                      ),
                  error=c(
-                         # TARGET.INC.AC,
-                         # initial.output, calibrated.output,
+                         TARGET.INC.AC,
+                         initial.output, calibrated.output,
                          initial.output.hsil, calibrated.output.hsil,
                          NULL
                          ) * 1e5,
                  type=c(
-                        # rep('target', N),
-                        # rep('initial', N), rep('calibrated', N),
+                        rep('target', N),
+                        rep('initial', N), rep('calibrated', N),
                         rep('initial', N), rep('calibrated', N),
                         NULL
                         ),
                  measure=c(
-                           # rep('ac', N),
-                           # rep('ac', N), rep('ac', N),
+                           rep('ac', N),
+                           rep('ac', N), rep('ac', N),
                            rep('hsil', N), rep('hsil', N),
                            NULL
                            ))
@@ -267,8 +275,9 @@ plt <- ggplot(df, aes(x=x, y=error, color=type, linetype=measure)) +
                         labels=c('AC incidence', 'HSIL incidence')) +
   xlab('Age group') +
   ylab('Incidence (per 100,000)') +
-  theme_minimal()
-plt
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+print(plt)
 ggplotly(plt)
 
 

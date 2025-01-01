@@ -14,6 +14,7 @@ N.POINTS.DEFAULT <- 5
 WTP.THRESHOLDS <- c(5000, 10000, 20000, 50000)
 COLOR.PALETTE <- c('#2a9d8f', '#e9c46a', '#f4a261', '#e76f51', '#ff0000')
 DEFAULT.DISCOUNT <- .05
+PRESERVE.TORNADO.ORDER.NHB.ICER <- TRUE
 
 dsa.n <- function(pars,
                   strat.ctx,
@@ -155,11 +156,16 @@ dsa.n <- function(pars,
   plt2 <- NULL
   if (length(pars) == 1) {
     param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
-    ret <- plot.tornado(results, population, reference=reference, param.display.names = param.display.names)
+    ret <- plot.tornado(results, population, reference=reference, param.display.names = param.display.names, WTP = 25000)
     plt <- ret[[1]]
     plt2 <- ret[[2]]
-
-    ret <- plot.tornado.nhb(results, population, reference=reference, param.display.names = param.display.names)
+    param.order <- NULL
+    
+    if (PRESERVE.TORNADO.ORDER.NHB.ICER) {
+      param.order <- ret[[3]]
+    }
+    
+    ret <- plot.tornado.nhb(results, population, reference=reference, param.order=param.order, param.display.names = param.display.names, WTP = 25000)
     plt.nhb <- ret[[1]]
     plt2.nhb <- ret[[2]]
     plts <- list(plt, plt2, plt.nhb, plt2.nhb)
@@ -201,9 +207,8 @@ dsa.1 <- function(pars,
     stop(paste0("Some parameters don't exist in the context: ",
                 paste0('"', pars[!pars %in% names(strat.ctx[[1]])], '"', collapse = ', ')))
 
-  # Forcing odd number of points to get equal number of points to each side
-  # of base value plus the base value itself
-  if (n.param.points %% 2 == 0)
+  # Forcing even number of points
+  if (n.param.points %% 2 == 1)
     n.param.points <- n.param.points + 1
 
   pars <- pars[order(pars)]
@@ -366,11 +371,17 @@ dsa.1 <- function(pars,
   #   ))
 
   param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
-
-  ret <- plot.tornado(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names)
+  
+  ret <- plot.tornado(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names, WTP = 25000)
   plt <- ret[[1]]
   plt2 <- ret[[2]]
-  ret <- plot.tornado.nhb(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names)
+  param.order <- NULL
+  
+  if (PRESERVE.TORNADO.ORDER.NHB.ICER) {
+    param.order <- ret[[3]]
+  }
+  
+  ret <- plot.tornado.nhb(results[results$strategy==strategy,], population, reference=reference, param.order=param.order, param.display.names=param.display.names, WTP = 25000)
   plt.nhb <- ret[[1]]
   plt2.nhb <- ret[[2]]
   plts <- list(plt, plt2, plt.nhb, plt2.nhb)
@@ -605,6 +616,7 @@ plot.tornado <- function(results,
 
   plot.df <- data.frame()
   scatter.df <- data.frame()
+  
   for(p in unique(results$param)) {
     par.names <- names(results)[endsWith(names(results), p)]
     sub.df <- results[results$param==p,]
@@ -623,7 +635,9 @@ plot.tornado <- function(results,
     } else {
       p.display <- p
     }
-    if ((base.icer >= icer.par.range[1] && base.icer <= icer.par.range[2]) ||
+    
+    if ((abs(diff(icer.par.range)) < 1e-12) || 
+        (base.icer >= icer.par.range[1] && base.icer <= icer.par.range[2]) ||
         (base.icer <= icer.par.range[1] && base.icer >= icer.par.range[2])) {
       if (diff(icer.par.range) > 0) {
         label <- paste0(p.display, '\n[', formatC(par.range[1], format='fg', digits=3), ' - ', formatC(par.range[2], format='fg', digits=3), ']')
@@ -676,12 +690,14 @@ plot.tornado <- function(results,
                           icer=sub.df$ICER
                         ))
   }
+  
   if (!is.null(param.order)) {
     plot.df <- plot.df[match(param.order, plot.df$param),]
   } else {
     plot.df <- plot.df[order(plot.df$width),]
     if (!is.null(min.icer.range))
       plot.df <- plot.df[plot.df$width > min.icer.range,]
+    param.order <- plot.df$param[!duplicated(plot.df$param)]
   }
   ordered.pars <- plot.df[!duplicated(plot.df$param), 'param']
   plot.df$pos <- sapply(plot.df$param, function(p) match(p, ordered.pars))
@@ -710,15 +726,18 @@ plot.tornado <- function(results,
         labels=labels,
         limits = c(0, length(unique(plot.df$param))+1),
         oob=squish_infinite) +
+      ggtitle(paste0('Tornado diagram [', results$strategy[1], ' vs ', reference, '] (Base ICER = ', formatC(base.icer, digits = 0, format = 'd'), ' €/QALY)')) +
       theme_minimal() +
-      theme(panel.grid.minor = element_blank()) +
-      ggtitle(paste0('Tornado diagram [', results$strategy[1], ' vs ', reference, '] (Base ICER = ', formatC(base.icer, digits = 0, format = 'd'), ' €/QALY)'))
+      theme(panel.grid.minor = element_blank(), plot.title = element_text(size=10))
   } else {
     plt <- plot +
       geom_segment(data=plot.df, size=3, color=bar.color, aes(x=min.v, xend=max.v, y=pos, yend=pos))
   }
 
-  if (length(WTP) == 2) {
+  if (length(WTP) == 1) {
+    plt <- plt +
+      geom_vline(xintercept=WTP[1], color='red', linetype=2)
+  } else if (length(WTP) == 2) {
     plt <- plt +
       # geom_vline(xintercept=WTP[2], color='red', linetype=2) +
       annotate("rect", xmin = WTP[1], xmax = WTP[2], ymin = 0, ymax = length(unique(plot.df$param)), alpha = .3) +
@@ -727,7 +746,7 @@ plot.tornado <- function(results,
 
   plt.w.points <- plt + geom_point(data=scatter.df, mapping=aes(x=icer, y=pos), color='yellow')
 
-  return(list(plt, plt.w.points))
+  return(list(plt, plt.w.points, param.order))
 }
 
 plot.tornado.nhb <- function(results,
@@ -796,6 +815,7 @@ plot.tornado.nhb <- function(results,
   } else {
     plot.df <- plot.df[order(plot.df$width),]
   }
+  
   ordered.pars <- plot.df[!duplicated(plot.df$param), 'param']
   plot.df$pos <- sapply(plot.df$param, function(p) match(p, ordered.pars))
   scatter.df$pos <- sapply(scatter.df$param, function(p)plot.df[plot.df$param==p,]$pos[1])

@@ -5,7 +5,7 @@ setwd('~/Documents/models_ce/anus')
 source('load_models.R')
 source('markov_dsa.R')
 
-N.PARAM.POINTS.TORNADO <- 3
+N.PARAM.POINTS.TORNADO <- 2
 DISCOUNT.RATE <- .03
 N.CORES <- 8
 
@@ -22,6 +22,14 @@ pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
 dsa.pars <- list(
+  all=pars
+  # ,
+  # irc=c('c_surgery','c_cyto','p_death_other_annual','p_cyto_hsil___no_hsil','c_irc',
+  #       'u_cancer','survival_5year','u_hiv_p','p_hra_hsil___cyto_hsil__hsil','p_no_hsil___hsil_irc',
+  #       'c_surgery_delayed','p_hsil_regression_annual','c_arn_kit','u_cancer_delayed','p_cyto_b___no_hsil',
+  #       'p_arnmhr_p___no_hsil','c_hra_treatment','p_undetected_hsil_treatment_whole_followup',
+  #       'p_arnmhr_p___hsil','p_cyto_b___hsil','u_hsil___irc','p_cyto_hsil___hsil')
+  # ,
   # costs=pars[startsWith(pars, '.c_') |
   #            startsWith(pars, 'c_')]
   # ,
@@ -40,9 +48,9 @@ dsa.pars <- list(
   #                    function(p)
   #                      any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
   # ,
-  not_ranged=pars[!sapply(pars,
-                          function(p)
-                            any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
+  # not_ranged=pars[!sapply(pars,
+  #                         function(p)
+  #                           any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
 )
 
 GET.RANGE.FUNC <- function(range) {
@@ -98,11 +106,17 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
 )
 
 SIMULATION.OPTIONS <- list(
-  followup=list(
+  # followup=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   display.name='ARN HPV-HR (TCA)'
+  # ),
+  followup2=list(
     population='hiv_msm',
-    reference='conventional_t_tca',
-    strategy='arnme6e7_hpvhr_t_tca',
-    display.name='ARN HPV-HR (TCA)'
+    reference='conventional_t_irc',
+    strategy='arnme6e7_hpvhr_t_irc',
+    display.name='ARN HPV-HR (IRC)'
   )
   # ,
   # treatment=list(
@@ -119,7 +133,9 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
   suppressWarnings(dir.create(output.dir, recursive=TRUE))
   write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
   for(i in seq_along(results$plots)) {
-    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', i, '.pdf'))
+    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', i, '.pdf'), 
+                         width = 9, 
+                         height= 15)
     print(results$plots[[i]])
     dev.off()
     # ggsave(paste0(output.dir, '/', filename, '_', i, '.pdf'),
