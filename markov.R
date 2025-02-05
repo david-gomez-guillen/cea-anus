@@ -262,7 +262,12 @@ calculate.iteration.measures <- function(trees, additional.info, year, iter, cur
 
   # Including undetected, otherwise no-intervention strategy would be zero
   # incidence_hsil <- (n_new_detected_false_hsils + n_new_detected_true_hsils + n_new_undetected_hsils) / sum(cs.df[!names(cs.df) %in% c('death_cancer', 'death_other', 'cancer', 'cancer_delayed', 'survive', 'surgery_no_cancer')])
-  incidence_hsil <- cs.df[['undetected_hsil']] * ctx$detection_new_hsil
+  
+  if (trees$hiv_msm$name == 'no_intervention') {
+    incidence_hsil <- ctx$detection_new_hsil
+  } else {
+    incidence_hsil <- cs.df[['undetected_hsil']] * ctx$detection_new_hsil
+  }
 
   if (strat == 'no_intervention') {
     n_cyto <- 0

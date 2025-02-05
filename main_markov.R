@@ -9,17 +9,18 @@ markov.outputs <- list()
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
 markov.result <- simulate('hiv_msm',
-                           # strategies$hiv_msm,
-                          strategies$hiv_msm[c('conventional_t_irc', 'arnme6e7_hpvhr_t_irc')],
+                           strategies$hiv_msm,
+                          # strategies$hiv_msm[c('conventional_t_irc', 'arnme6e7_hpvhr_t_irc')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc')],
+                          # strategies$hiv_msm[c('arnme6e7_hpvhr_t_irc', 'arnme6e7_hpvhr_t_tca')],
                            markov,
                            strat.ctx,
                            initial.state,
                            discount.rate=.03)
 
 # Remove redundant suffix for strategy names
-markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
-
+# markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
+# 
 print(markov.result$plot)
 print(markov.result$summary)
 print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
@@ -55,7 +56,7 @@ for(discount in discount.values) {
   for(arn.cost in arn.cost.values) {
     for(delayed.cancer.cost in delayed.cancer.cost.values) {
       strat.ctx.i <- lapply(strat.ctx, function(ctx) {
-        ctx[c('c_arnm16','c_arnm161845','c_arnmhr')] <- arn.cost
+        ctx[c('c_arn_kit')] <- arn.cost
         ctx['c_surgery_delayed'] <- delayed.cancer.cost
         ctx
       })
@@ -67,6 +68,7 @@ for(discount in discount.values) {
                           strat.ctx.i,
                           initial.state,
                           discount.rate = discount)
+      
       markov.results[[paste0('disc_', discount, '_arn_', arn.cost, '_delayed_cancer_', delayed.cancer.cost)]] <- x
     }
   }

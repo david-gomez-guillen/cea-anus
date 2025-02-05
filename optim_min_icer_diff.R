@@ -5,8 +5,10 @@ source('markov.R')
 
 VARIATION <- 1
 
-strategy <- 'arnme6e7_hpvhr_t_irc'
-reference <- 'conventional_t_irc'
+# strategy <- 'arnme6e7_hpvhr_t_irc'
+# reference <- 'conventional_t_irc'
+strategy <- 'arnme6e7_hpvhr_t_tca'
+reference <- 'arnme6e7_hpvhr_t_irc'
 
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
@@ -70,29 +72,30 @@ icer.diff <- function(par.val, par.name) {
 #               'p_hra_hsil___cyto_hsil__hsil')
 
 # par.list <- c('u_hsil___irc', 'p_cyto_b___hsil', 'p_undetected_hsil_treatment_whole_followup', 'p_arnmhr_p___hsil')
-par.list <- c(
-  'c_cyto',
-  'c_arn_kit',
-  'c_hra_treatment',
-  'c_irc',
-  'c_surgery',
-  'c_surgery_delayed',
-  'p_cyto_b___hsil',
-  'p_cyto_b___no_hsil',
-  'p_cyto_hsil___no_hsil',
-  'p_death_other_annual',
-  'p_arnmhr_p___hsil',
-  'p_arnmhr_p___no_hsil',
-  'p_hra_hsil___cyto_hsil__hsil',
-  'p_hsil_regression_annual',
-  'p_undetected_hsil_treatment_whole_followup',
-  'survival_5year',
-  'p_no_hsil___hsil_irc',
-  'u_hiv_p',
-  'u_hsil___irc',
-  'u_cancer',
-  'u_cancer_delayed'
-)
+# par.list <- c(
+#   'c_cyto',
+#   'c_arn_kit',
+#   'c_hra_treatment',
+#   'c_irc',
+#   'c_surgery',
+#   'c_surgery_delayed',
+#   'p_cyto_b___hsil',
+#   'p_cyto_b___no_hsil',
+#   'p_cyto_hsil___no_hsil',
+#   'p_death_other_annual',
+#   'p_arnmhr_p___hsil',
+#   'p_arnmhr_p___no_hsil',
+#   'p_hra_hsil___cyto_hsil__hsil',
+#   'p_hsil_regression_annual',
+#   'p_undetected_hsil_treatment_whole_followup',
+#   'survival_5year',
+#   'p_no_hsil___hsil_irc',
+#   'u_hiv_p',
+#   'u_hsil___irc',
+#   'u_cancer',
+#   'u_cancer_delayed'
+# )
+par.list <- c('c_tca_single', 'n_tca', 'p_no_hsil___hsil_tca', 'u_hiv_p___tca', 'u_hsil___tca')
 
 df <- data.frame()
 

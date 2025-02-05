@@ -257,6 +257,7 @@ dsa.1 <- function(pars,
                           max.age=DEFAULT.MAX.AGE[[population]],
                           discount.rate=discount.rate)
   base.result <- base.output$summary
+  
   base.ref <- base.result[startsWith(base.result$strategy, reference),]
   base.strat <- base.result[startsWith(base.result$strategy, strategy),]
   IC <- base.strat$C - base.ref$C

@@ -22,7 +22,11 @@ pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
 dsa.pars <- list(
-  all=pars
+  # all=pars
+  # ,
+  # p_01=c('p_hra_hsil___cyto_hsil__no_hsil')
+  # ,
+  p_02=c('p_hra_invasive_cancer___cyto_hsil__no_hsil')
   # ,
   # irc=c('c_surgery','c_cyto','p_death_other_annual','p_cyto_hsil___no_hsil','c_irc',
   #       'u_cancer','survival_5year','u_hiv_p','p_hra_hsil___cyto_hsil__hsil','p_no_hsil___hsil_irc',
@@ -96,13 +100,15 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
   # ,
   # not_ranged_5=GET.RANGE.FUNC(.05)
   # ,
-  not_ranged_10=GET.RANGE.FUNC(.1)
-  ,
-  not_ranged_20=GET.RANGE.FUNC(.2)
-  ,
+  # not_ranged_10=GET.RANGE.FUNC(.1)
+  # ,
+  # not_ranged_20=GET.RANGE.FUNC(.2)
+  # ,
   # not_ranged_25=GET.RANGE.FUNC(.25)
   # ,
-  not_ranged_50=GET.RANGE.FUNC(.5)
+  # not_ranged_50=GET.RANGE.FUNC(.5)
+  # ,
+  not_ranged_100=GET.RANGE.FUNC(1)
 )
 
 SIMULATION.OPTIONS <- list(

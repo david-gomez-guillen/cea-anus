@@ -1,5 +1,6 @@
 library(dplyr)
 library(ggplot2)
+library(cmaes)
 
 # setwd('~/Documents/models_ce/anus')
 
@@ -13,10 +14,15 @@ CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= DEFAULT.START.AGE$hiv_msm & a
 # CALIB.PARAMS <- c('p_cancer___hsil_annual', 'p_hsil_regression_annual', 'p_hsil_annual', 'survival_5year')
 CALIB.PARAMS <- c('p_cancer___hsil_annual')
 
-# PLACEHOLDER
-# TARGET.INC.HSIL <- c(0.002489277, 0.002469715, 0.002304056, 0.002192828, 0.001754127, 0.001508943, 0.001389184, 0.001325221)
-# TARGET.INC.HSIL <- c(0.013300098, 0.016618926, 0.019937754, 0.023256581, 0.03533414, 0.047411699, 0.059489258, 0.071566816)
 
+# First calibration HSIL incidence multiplied by 4.5 so the mean incidence equal to Deshmuk (0.102827)
+TARGET.INC.HSIL <- c(0.03266429, 0.06450535, 0.07406059, 0.09361854, 0.12650886, 0.14022268, 0.14507399, 0.14596170)
+
+
+### Forcing hsil incidence
+# for(i in seq_along(TARGET.INC.HSIL)) {
+#   strat.ctx[CALIB.AGE.GROUPS][[i]]$p_undetected_hsil <- TARGET.INC.HSIL[i]
+# }
 
  # Source: Clifford 2021 - "A meta‐analysis of anal cancer incidence by risk group: Toward a unified anal cancer risk scale"
  # Ages: 30-44, 45-59, >=60
@@ -62,7 +68,8 @@ calibration.error <- function(pars) {
     # error <- sum((sim.inc.hsil - TARGET.INC.HSIL)^2)
     
     ac.inc <- calculate.ac.incidence(result)
-    error <- sum((((ac.inc - TARGET.INC.AC)/TARGET.INC.AC)^2))
+    hsil.inc <- calculate.hsil.incidence(result)
+    error <- sum((((ac.inc - TARGET.INC.AC)/TARGET.INC.AC)^2)) #+ sum((((hsil.inc - TARGET.INC.HSIL)/TARGET.INC.HSIL)^2))
   } else {
     error <- 1e10
   }
@@ -137,7 +144,7 @@ run.calib.simulation <- function(pars) {
                                      calib.strat.ctx,
                                      initial.state,
                                      discount.rate=.03),
-                            error=function(e) NULL)
+                            error=function(e) {browser()})
   sink()
   return(markov.result)
 }
@@ -206,22 +213,37 @@ initial.guess <- ctx.to.calib.vec(strat.ctx)
 
 ### Calibration tests
 
-# eval.count <- 0
-# start.time <- Sys.time()
+eval.count <- 0
+start.time <- Sys.time()
 # res <- optim(initial.guess,
 #              calibration.error,
 #              method='L-BFGS-B',
 #              lower=0,
 #              upper=pmin(1, initial.guess*2),
-#              control=list(parscale=rep(1e0, length(initial.guess))))
-# cat('Elapsed time: ', as.numeric(difftime(Sys.time(), start.time, units='min')), ' min')
-# cat('Evaluations: ', eval.count)
+#              control=list(parscale=rep(1e1, length(initial.guess))))
+
+
+res <- cma_es(initial.guess,
+             calibration.error,
+             lower=0,
+             upper=pmin(1, initial.guess*2),
+             control=list(parscale=rep(1e1, length(initial.guess))))
+
+
+cat('Elapsed time: ', as.numeric(difftime(Sys.time(), start.time, units='min')), ' min')
+cat('Evaluations: ', eval.count)
 
 # calibrated.params <- c(-0.0139209272984589, 0.21232154057876, 0.364071566588375, 0.717170166876237, -0.0622384853973795, 0.314116846940157, 0.186051428946503, 0.740628449313684, -0.135785937725696, 0.14925722025157, 0.243267527370599, 0.685908114352199, -0.0893746736930389, 0.0358020274651913, 0.0126455789263969, 0.650912765904558, -0.0330301253200985, 0.0647795838910365, 0.0927301615440421, 0.674989033250804, 0.168174095163349, 0.0586796353790068, 0.0909229577061081, 0.624857773495392, -0.149165565705991, 0.06126115901712, 0.0809641281482692, 0.662236155916717, 0.0400284915095845, 0.0555599660575189, 0.106234844080886, 0.582454650757503)
-# calibrated.params <- res$par
+calibrated.params <- res$par
 
-calibrated.params <- c(0.0058691355195081, 0.00344980252811424, 0.00324775583133558, 0.00258766335262408, 0.00193687668776452, 0.0018456703895995, 0.00184691109687812, 0.0018916537948187)
-uncalibrated.params <- rep(1/131, 8)
+# calibrated.params <- c(0.0058691355195081, 0.00344980252811424, 0.00324775583133558, 0.00258766335262408, 0.00193687668776452, 0.0018456703895995, 0.00184691109687812, 0.0018916537948187)
+uncalibrated.params <- c(
+  rep(1/131, 8)
+  # ,
+  # sapply(strat.ctx[CALIB.AGE.GROUPS], function(ctx) ctx$p_undetected_hsil)
+  # ,
+  # sapply(strat.ctx[CALIB.AGE.GROUPS], function(ctx) ctx$p_hsil_regression_annual)
+)
 
 
 # initial.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
@@ -279,6 +301,9 @@ plt <- ggplot(df, aes(x=x, y=error, color=type, linetype=measure)) +
   theme(panel.grid = element_blank())
 print(plt)
 ggplotly(plt)
+
+x <- ctx.to.calib.vec(strat.ctx)
+print(paste0('Mean HSIL incidence: ', mean(calculate.hsil.incidence(x))))
 
 
 
