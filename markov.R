@@ -160,7 +160,7 @@ setup.markov <- function(trees, strat.ctx) {
     context$p_surgery_no_cancer___semestral_followup_no_hsil <- .(sum(outcomes.sem[c('surgery_no_cancer'), 'prob']))
     # Assuming IRC does not affect cancer probabilities
     context$p_surgery_no_cancer___semestral_followup_treatment_no_hsil <- .(sum(outcomes.sem[c('surgery_no_cancer'), 'prob']))
-   
+
     # Outcomes for semestral followup (HSIL)
     outcomes.sem.hsil <- trees$semestral_followup$summarize(context, prevalence=1)
     row.names(outcomes.sem.hsil) <- outcomes.sem.hsil$name
@@ -179,7 +179,7 @@ setup.markov <- function(trees, strat.ctx) {
       context$p_hsil___semestral_followup_no_hsil_treatment <- context$p_hsil___semestral_followup_no_hsil_treatment
       context$p_undetected_hsil <- context$p_undetected_hsil_treatment
     }
-    
+
     cost.hiv_msm <- weighted.mean(outcomes$cost, outcomes$prob)
     cost.undetected.hsil <- weighted.mean(outcomes.undetected$cost, outcomes.undetected$prob)
     cost.sem.followup <- weighted.mean(outcomes.sem$cost, outcomes.sem$prob)
@@ -262,12 +262,14 @@ calculate.iteration.measures <- function(trees, additional.info, year, iter, cur
 
   # Including undetected, otherwise no-intervention strategy would be zero
   # incidence_hsil <- (n_new_detected_false_hsils + n_new_detected_true_hsils + n_new_undetected_hsils) / sum(cs.df[!names(cs.df) %in% c('death_cancer', 'death_other', 'cancer', 'cancer_delayed', 'survive', 'surgery_no_cancer')])
-  
-  if (trees$hiv_msm$name == 'no_intervention') {
-    incidence_hsil <- ctx$detection_new_hsil
-  } else {
-    incidence_hsil <- cs.df[['undetected_hsil']] * ctx$detection_new_hsil
-  }
+
+  # if (trees$hiv_msm$name == 'no_intervention') {
+  #   incidence_hsil <- ctx$detection_new_hsil
+  # } else {
+  #   incidence_hsil <- cs.df[['undetected_hsil']] * ctx$detection_new_hsil
+  # }
+  # browser()
+  incidence_hsil <- ctx$detection_new_hsil
 
   if (strat == 'no_intervention') {
     n_cyto <- 0
@@ -476,7 +478,7 @@ simulate.markov <- function(trees,
     ctx <- get.context.stratum(strat.ctx, real.year, period)
     # tpMatrix <- get.matrix.stratum(tpMatrices, year)
     # ctx <- get.context.stratum(strat.ctx, year)
-    
+
     # year.costs <- get.context.stratum(costs, year)
     # year.utilities <- get.context.stratum(utilities, year)
     iter.costs <- unlist(get.context.stratum(costs, real.year, period))

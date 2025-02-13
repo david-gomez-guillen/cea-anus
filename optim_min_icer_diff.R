@@ -7,6 +7,8 @@ VARIATION <- 1
 
 # strategy <- 'arnme6e7_hpvhr_t_irc'
 # reference <- 'conventional_t_irc'
+# strategy <- 'arnme6e7_hpvhr_t_tca'
+# reference <- 'conventional_t_tca'
 strategy <- 'arnme6e7_hpvhr_t_tca'
 reference <- 'arnme6e7_hpvhr_t_irc'
 
@@ -22,7 +24,7 @@ calculate.output <- function(par.val, par.name) {
     ctx
   })
   strat.ctx.i <- refresh.context(par, strat.ctx.i, excel.strata.df)
-  
+
   x <- simulate('hiv_msm',
                 sim.strats,
                 markov,
@@ -56,18 +58,19 @@ icer.diff <- function(par.val, par.name) {
   return(nhb.diff)
 }
 
-# par.list <- c('u_hiv_p', 
-#               'p_cyto_b___hsil', 
-#               'p_arnmhr_p___hsil', 
+par.list <- pars[startsWith(pars, 'u_')]
+# par.list <- c('u_hiv_p',
+#               'p_cyto_b___hsil',
+#               'p_arnmhr_p___hsil',
 #               'p_undetected_hsil_treatment_whole_followup',
-#               'u_cancer_delayed', 
-#               'c_hra_treatment', 
-#               'p_arnmhr_p___no_hsil', 
+#               'u_cancer_delayed',
+#               'c_hra_treatment',
+#               'p_arnmhr_p___no_hsil',
 #               'p_cyto_b___no_hsil',
-#               'c_arn_kit', 
-#               'p_no_hsil___hsil_tca', 
-#               'survival_5year', 
-#               'p_hsil_regression_annual', 
+#               'c_arn_kit',
+#               'p_no_hsil___hsil_tca',
+#               'survival_5year',
+#               'p_hsil_regression_annual',
 #               'c_surgery_delayed',
 #               'p_hra_hsil___cyto_hsil__hsil')
 
@@ -95,7 +98,23 @@ icer.diff <- function(par.val, par.name) {
 #   'u_cancer',
 #   'u_cancer_delayed'
 # )
-par.list <- c('c_tca_single', 'n_tca', 'p_no_hsil___hsil_tca', 'u_hiv_p___tca', 'u_hsil___tca')
+
+# IRC
+# par.list <- c('c_arn_kit','c_hra_treatment','c_surgery_delayed','p_arnmhr_p___hsil',
+#               'p_arnmhr_p___no_hsil','p_cyto_b___hsil','p_cyto_b___no_hsil',
+#               'p_hsil_regression_annual','p_no_hsil___hsil_irc',
+#               'p_undetected_hsil_treatment_whole_followup','u_cancer_delayed','u_hsil___irc')
+
+# TCA
+# par.list <- c('c_arn_kit','c_hra_treatment','c_surgery_delayed','p_arnmhr_p___hsil',
+#               'p_arnmhr_p___no_hsil','p_cyto_b___hsil','p_cyto_b___no_hsil',
+#               'p_hsil_regression_annual','p_no_hsil___hsil_tca',
+#               'p_undetected_hsil_treatment_whole_followup','u_cancer_delayed','u_hsil___tca')
+
+# ARN-HPV-HR
+# par.list <- c('u_hsil___irc', 'u_hsil___tca', 'u_hiv_p___irc', 'u_hiv_p___tca',
+#               'p_no_hsil___hsil_irc', 'p_no_hsil___hsil_tca')
+
 
 df <- data.frame()
 
@@ -110,22 +129,24 @@ for(par in par.list) {
                          initial.guess*(1+VARIATION),
                          min(initial.guess*(1+VARIATION), 1))
 
-  res <- optimize(icer.diff, 
-                  lower=lower.limit, 
-                  upper=upper.limit, 
+  res <- optimize(icer.diff,
+                  lower=lower.limit,
+                  upper=upper.limit,
                   par.name=par,
                   tol=1e-6)
 
   optim.output <- calculate.output(res$minimum, par)
   sink()
-  df <- rbind(df, data.frame(par=par, 
-                             sq.nhb.diff=res$objective, 
+  df <- rbind(df, data.frame(par=par,
+                             sq.nhb.diff=res$objective,
                              nhb=calculate.nhb(optim.output),
                              icer=calculate.icer(optim.output),
-                             base.value=initial.guess, 
+                             base.value=initial.guess,
                              value=res$minimum))
   print(df)
 }
 
 print(df)
-View(df)
+# View(df)
+df <- df[,c('par', 'icer', 'base.value', 'value')]
+write.xlsx(df, 'output/results/critical_values.xlsx')

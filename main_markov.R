@@ -9,7 +9,8 @@ markov.outputs <- list()
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
 markov.result <- simulate('hiv_msm',
-                           strategies$hiv_msm,
+                           # strategies$hiv_msm,
+                          strategies$hiv_msm['no_intervention'],
                           # strategies$hiv_msm[c('conventional_t_irc', 'arnme6e7_hpvhr_t_irc')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_irc', 'arnme6e7_hpvhr_t_tca')],
@@ -20,9 +21,10 @@ markov.result <- simulate('hiv_msm',
 
 # Remove redundant suffix for strategy names
 # markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
-# 
+
 print(markov.result$plot)
 print(markov.result$summary)
+plot(markov.result$info$no_intervention$additional.info$incidence_hsil, type='l')
 print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
 
 # x <- markov.result$info$conventional$additional.info
@@ -61,6 +63,8 @@ for(discount in discount.values) {
         ctx
       })
 
+      strat.ctx.i <- refresh.context(c('c_arn_kit', 'c_surgery_delayed'), strat.ctx.i, excel.strata.df)
+
       cat('*** Simulating set with discount=', discount, ', ARN cost=', arn.cost, ' and delayed cancer cost=', delayed.cancer.cost, '\n', sep = '')
       x <- simulate('hiv_msm',
                           strategies$hiv_msm,
@@ -68,7 +72,7 @@ for(discount in discount.values) {
                           strat.ctx.i,
                           initial.state,
                           discount.rate = discount)
-      
+
       markov.results[[paste0('disc_', discount, '_arn_', arn.cost, '_delayed_cancer_', delayed.cancer.cost)]] <- x
     }
   }
@@ -130,12 +134,12 @@ var.names <- names(summary.df)[1:33]
 strat.names <- c('conventional', 'hpvhrhc', 'hpv16la', 'hpv1618la', 'hpvhrla', 'arnme6e7_hpv16', 'arnme6e7_hpv161845', 'arnme6e7_hpvhr', 'no_intervention')
 treatment.names <- c('followup', 'IRC', 'TCA')
 
-new.summary.df <- data.frame(strategy=c('conventional', 
-                                        rep(strat.names[2:8], 2), 
+new.summary.df <- data.frame(strategy=c('conventional',
+                                        rep(strat.names[2:8], 2),
                                         'no_intervention'),
-                             ascus.diff=c('-', 
-                                          rep('no.ascus.diff', 7), 
-                                          rep('ascus.diff', 7), 
+                             ascus.diff=c('-',
+                                          rep('no.ascus.diff', 7),
+                                          rep('ascus.diff', 7),
                                           'no_intervention'))
 for(var.name in var.names) {
   for(treatment in treatment.names) {
@@ -146,7 +150,7 @@ for(var.name in var.names) {
     var.summary.df.3 <- var.summary.df[var.summary.df$ascus.diff=='no_intervention',]
     if (nrow(var.summary.df.3) == 0) var.summary.df.3 <- NA
     else var.summary.df.3 <- var.summary.df.3[[var.name]]
-    
+
     new.summary.df[paste0(var.name, '_', treatment)] <- c(var.summary.df.0[[var.name]],
                  var.summary.df.1[[var.name]],
                  var.summary.df.2[[var.name]],

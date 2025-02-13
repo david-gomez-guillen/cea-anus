@@ -121,11 +121,18 @@ DEFAULT.CALIBRATED.START.AGE <- 40
 DEFAULT.CALIBRATED.MAX.AGE <- 80
 age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
 CALIB.PARAMS <- c('p_cancer___hsil_annual')
+# CALIB.PARAMS <- c(  'p_cancer___hsil_annual'
+#                     ,'p_hsil_regression_annual'
+#                     ,'p_hsil_annual')
 CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= DEFAULT.CALIBRATED.START.AGE & age.groups < DEFAULT.CALIBRATED.MAX.AGE]
 
 update.calibrated.params <- function(strat.ctx) {
   CALIB.VALUES <- c(0.0058691355195081, 0.00344980252811424, 0.00324775583133558, 0.00258766335262408, 0.00193687668776452, 0.0018456703895995, 0.00184691109687812, 0.0018916537948187)
 
+  # CALIB.VALUES <- c(0.003600943, 0.000000000, 0.042698765, 0.003448710, 0.033251917, 0.065748361, 0.003600943, 0.332834516,
+  #                   0.073456284, 0.003600943, 0.052402072, 0.093412511, 0.002113810, 0.068304628, 0.125737058, 0.001989743,
+  #                   0.095791788, 0.136370454, 0.001961317, 0.063125718, 0.140180166, 0.001983730, 0.091282439, 0.140690455)
+  
   strat.ctx <- calib.vec.to.ctx(CALIB.VALUES, strat.ctx)
   refresh.context(CALIB.PARAMS, strat.ctx, excel.strata.df)
   return(strat.ctx)

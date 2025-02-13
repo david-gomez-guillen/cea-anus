@@ -5,7 +5,7 @@ setwd('~/Documents/models_ce/anus')
 source('load_models.R')
 source('markov_dsa.R')
 
-N.PARAM.POINTS.TORNADO <- 2
+N.PARAM.POINTS.TORNADO <- 4
 DISCOUNT.RATE <- .03
 N.CORES <- 8
 
@@ -22,11 +22,11 @@ pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
 dsa.pars <- list(
-  # all=pars
+  all=pars
   # ,
   # p_01=c('p_hra_hsil___cyto_hsil__no_hsil')
   # ,
-  p_02=c('p_hra_invasive_cancer___cyto_hsil__no_hsil')
+  # p_02=c('p_hra_invasive_cancer___cyto_hsil__no_hsil')
   # ,
   # irc=c('c_surgery','c_cyto','p_death_other_annual','p_cyto_hsil___no_hsil','c_irc',
   #       'u_cancer','survival_5year','u_hiv_p','p_hra_hsil___cyto_hsil__hsil','p_no_hsil___hsil_irc',
@@ -100,30 +100,37 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
   # ,
   # not_ranged_5=GET.RANGE.FUNC(.05)
   # ,
-  # not_ranged_10=GET.RANGE.FUNC(.1)
+  range_10=GET.RANGE.FUNC(.1)
+  ,
+  # range_20=GET.RANGE.FUNC(.2)
   # ,
-  # not_ranged_20=GET.RANGE.FUNC(.2)
+  # range_25=GET.RANGE.FUNC(.25)
   # ,
-  # not_ranged_25=GET.RANGE.FUNC(.25)
+  range_50=GET.RANGE.FUNC(.5)
   # ,
-  # not_ranged_50=GET.RANGE.FUNC(.5)
-  # ,
-  not_ranged_100=GET.RANGE.FUNC(1)
+  # range_100=GET.RANGE.FUNC(1)
 )
 
 SIMULATION.OPTIONS <- list(
-  # followup=list(
+  # tca=list(
   #   population='hiv_msm',
   #   reference='conventional_t_tca',
   #   strategy='arnme6e7_hpvhr_t_tca',
   #   display.name='ARN HPV-HR (TCA)'
   # ),
-  followup2=list(
+  irc=list(
     population='hiv_msm',
     reference='conventional_t_irc',
     strategy='arnme6e7_hpvhr_t_irc',
     display.name='ARN HPV-HR (IRC)'
   )
+  # ,
+  # arnhpvhr=list(
+  #   population='hiv_msm',
+  #   reference='arnme6e7_hpvhr_t_irc',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   display.name='ARN HPV-HR (TCA)'
+  # )
   # ,
   # treatment=list(
   #   population='hiv_msm',
@@ -138,9 +145,10 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
   output.dir <- paste0(getwd(), '/output/dsa_', dsa.type, '/', population)
   suppressWarnings(dir.create(output.dir, recursive=TRUE))
   write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
+  suffixes <- c('icer', 'icer_test', 'nhb', 'nhb_test')
   for(i in seq_along(results$plots)) {
-    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', i, '.pdf'), 
-                         width = 9, 
+    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', suffixes[i], '.pdf'),
+                         width = 9,
                          height= 15)
     print(results$plots[[i]])
     dev.off()
@@ -219,7 +227,7 @@ for(param.set.name in names(dsa.pars)) {
                        range.estimate=range.estimate.func,
                        context.setup.func=context.setup,
                        discount.rate = DISCOUNT.RATE)
-      filename <- paste0(options$strategy.name, '__range_', range.estimate.name, '_params_', param.set.name)
+      filename <- paste0(option.name, '__', range.estimate.name, '_params_', param.set.name)
       store.results.dsa(results, 'univariate', options$population, options$display.name, filename)
     }
   }

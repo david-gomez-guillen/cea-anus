@@ -160,11 +160,11 @@ dsa.n <- function(pars,
     plt <- ret[[1]]
     plt2 <- ret[[2]]
     param.order <- NULL
-    
+
     if (PRESERVE.TORNADO.ORDER.NHB.ICER) {
       param.order <- ret[[3]]
     }
-    
+
     ret <- plot.tornado.nhb(results, population, reference=reference, param.order=param.order, param.display.names = param.display.names, WTP = 25000)
     plt.nhb <- ret[[1]]
     plt2.nhb <- ret[[2]]
@@ -257,7 +257,7 @@ dsa.1 <- function(pars,
                           max.age=DEFAULT.MAX.AGE[[population]],
                           discount.rate=discount.rate)
   base.result <- base.output$summary
-  
+
   base.ref <- base.result[startsWith(base.result$strategy, reference),]
   base.strat <- base.result[startsWith(base.result$strategy, strategy),]
   IC <- base.strat$C - base.ref$C
@@ -372,16 +372,16 @@ dsa.1 <- function(pars,
   #   ))
 
   param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
-  
+
   ret <- plot.tornado(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names, WTP = 25000)
   plt <- ret[[1]]
   plt2 <- ret[[2]]
   param.order <- NULL
-  
+
   if (PRESERVE.TORNADO.ORDER.NHB.ICER) {
     param.order <- ret[[3]]
   }
-  
+
   ret <- plot.tornado.nhb(results[results$strategy==strategy,], population, reference=reference, param.order=param.order, param.display.names=param.display.names, WTP = 25000)
   plt.nhb <- ret[[1]]
   plt2.nhb <- ret[[2]]
@@ -617,7 +617,7 @@ plot.tornado <- function(results,
 
   plot.df <- data.frame()
   scatter.df <- data.frame()
-  
+
   for(p in unique(results$param)) {
     par.names <- names(results)[endsWith(names(results), p)]
     sub.df <- results[results$param==p,]
@@ -636,8 +636,8 @@ plot.tornado <- function(results,
     } else {
       p.display <- p
     }
-    
-    if ((abs(diff(icer.par.range)) < 1e-12) || 
+
+    if ((abs(diff(icer.par.range)) < 1e-12) ||
         (base.icer >= icer.par.range[1] && base.icer <= icer.par.range[2]) ||
         (base.icer <= icer.par.range[1] && base.icer >= icer.par.range[2])) {
       if (diff(icer.par.range) > 0) {
@@ -691,7 +691,7 @@ plot.tornado <- function(results,
                           icer=sub.df$ICER
                         ))
   }
-  
+
   if (!is.null(param.order)) {
     plot.df <- plot.df[match(param.order, plot.df$param),]
   } else {
@@ -816,7 +816,7 @@ plot.tornado.nhb <- function(results,
   } else {
     plot.df <- plot.df[order(plot.df$width),]
   }
-  
+
   ordered.pars <- plot.df[!duplicated(plot.df$param), 'param']
   plot.df$pos <- sapply(plot.df$param, function(p) match(p, ordered.pars))
   scatter.df$pos <- sapply(scatter.df$param, function(p)plot.df[plot.df$param==p,]$pos[1])
