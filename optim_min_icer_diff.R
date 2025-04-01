@@ -7,10 +7,10 @@ VARIATION <- 1
 
 # strategy <- 'arnme6e7_hpvhr_t_irc'
 # reference <- 'conventional_t_irc'
-# strategy <- 'arnme6e7_hpvhr_t_tca'
-# reference <- 'conventional_t_tca'
 strategy <- 'arnme6e7_hpvhr_t_tca'
-reference <- 'arnme6e7_hpvhr_t_irc'
+reference <- 'conventional_t_tca'
+# strategy <- 'arnme6e7_hpvhr_t_tca'
+# reference <- 'arnme6e7_hpvhr_t_irc'
 
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
@@ -18,11 +18,19 @@ initial.state <- sapply(markov$nodes,
 sim.strats <- strategies$hiv_msm
 sim.strats <- sim.strats[names(sim.strats) %in% c(strategy, reference)]
 
-calculate.output <- function(par.val, par.name) {
-  strat.ctx.i <- lapply(strat.ctx, function(ctx) {
-    ctx[par.name] <- par.val
-    ctx
+calculate.output <- function(par.val, par.name, age.group=NULL) {
+  # strat.ctx.i <- lapply(strat.ctx, function(ctx) {
+  #   if (is.null(age.group) || age.group == )
+  #   ctx[par.name] <- par.val
+  #   ctx
+  # })
+  strat.ctx.i <- lapply(names(strat.ctx), function(ctx.name) {
+    ctx.i <- strat.ctx[[ctx.name]]
+    if (is.null(age.group) || age.group == ctx.name)
+      ctx.i[par.name] <- par.val
+    ctx.i
   })
+  names(strat.ctx.i) <- names(strat.ctx)
   strat.ctx.i <- refresh.context(par, strat.ctx.i, excel.strata.df)
 
   x <- simulate('hiv_msm',
@@ -48,17 +56,19 @@ calculate.icer <- function(x) {
   return(icer)
 }
 
-icer.diff <- function(par.val, par.name) {
-  x <- calculate.output(par.val, par.name)
-
-  nhb.diff <- (calculate.nhb(x))^2
-  # icer.diff <- ((st$C-ref$C)/(st$E-ref$E) - 25000)^2
-  # cat(par.val, nhb.diff, icer.diff, '\n')
-  print(nhb.diff)
-  return(nhb.diff)
+icer.diff <- function(par.val, par.name, age.group=NULL) {
+  x <- calculate.output(par.val, par.name, age.group)
+  # st <- x[startsWith(x$strategy,strategy),]
+  # ref <- x[startsWith(x$strategy,reference),]
+  
+  
+  error <- (calculate.nhb(x))^2
+  # error <- ((st$C-ref$C)/(st$E-ref$E) - 25000)^2
+  # print((st$C-ref$C)/(st$E-ref$E))
+  return(error)
 }
 
-par.list <- pars[startsWith(pars, 'u_')]
+# par.list <- pars[startsWith(pars, 'u_')]
 # par.list <- c('u_hiv_p',
 #               'p_cyto_b___hsil',
 #               'p_arnmhr_p___hsil',
@@ -99,6 +109,9 @@ par.list <- pars[startsWith(pars, 'u_')]
 #   'u_cancer_delayed'
 # )
 
+# Age-specific
+par.list <- c('p_hsil_regression_annual')
+
 # IRC
 # par.list <- c('c_arn_kit','c_hra_treatment','c_surgery_delayed','p_arnmhr_p___hsil',
 #               'p_arnmhr_p___no_hsil','p_cyto_b___hsil','p_cyto_b___no_hsil',
@@ -119,34 +132,50 @@ par.list <- pars[startsWith(pars, 'u_')]
 df <- data.frame()
 
 for(par in par.list) {
-  cat('Finding', par, 'value with NHB~0...\n')
-  initial.guess <- strat.ctx$y40_44[[par]]
-
-  suppressWarnings(sink())
-  sink('/dev/null')
-  lower.limit <- initial.guess*(1-VARIATION)
-  upper.limit <- ifelse(!any(startsWith(par, c('p', '.p', 'u'))),
-                         initial.guess*(1+VARIATION),
-                         min(initial.guess*(1+VARIATION), 1))
-
-  res <- optimize(icer.diff,
-                  lower=lower.limit,
-                  upper=upper.limit,
-                  par.name=par,
-                  tol=1e-6)
-
-  optim.output <- calculate.output(res$minimum, par)
-  sink()
-  df <- rbind(df, data.frame(par=par,
-                             sq.nhb.diff=res$objective,
-                             nhb=calculate.nhb(optim.output),
-                             icer=calculate.icer(optim.output),
-                             base.value=initial.guess,
-                             value=res$minimum))
-  print(df)
+  if (length(unique(sapply(strat.ctx, function(ctx)ctx[[par]]))) == 1) {
+    age.groups <- '-'
+  } else {
+    age.groups <- names(strat.ctx)[age.groups >= DEFAULT.START.AGE$hiv_msm & age.groups < DEFAULT.MAX.AGE$hiv_msm]
+  }
+  for(age.group in age.groups) {
+    if (age.group == '-') age.group <- NULL
+    if (is.null(age.group)) {
+      initial.guess <- strat.ctx$y40_44[[par]]
+      cat('Finding', par, 'value with NHB~0...\n')
+    } else {
+      initial.guess <- strat.ctx[[age.group]][[par]]
+      cat('Finding', par, 'value for', age.group, 'with NHB~0...\n')
+    }
+    
+    suppressWarnings(sink())
+    sink('/dev/null')
+    lower.limit <- initial.guess*(1-VARIATION)
+    upper.limit <- ifelse(!any(startsWith(par, c('p', '.p', 'u'))),
+                           initial.guess*(1+VARIATION),
+                           min(initial.guess*(1+VARIATION), 1))
+    
+    res <- optimize(icer.diff,
+                    lower=lower.limit,
+                    upper=upper.limit,
+                    par.name=par,
+                    age.group=age.group,
+                    tol=1e-6)
+  
+    optim.output <- calculate.output(res$minimum, par, age.group=age.group)
+    sink()
+    
+    df <- rbind(df, data.frame(par=par,
+                               age.group=age.group,
+                               # sq.nhb.diff=res$objective,
+                               # nhb=calculate.nhb(optim.output),
+                               icer=calculate.icer(optim.output),
+                               base.value=initial.guess,
+                               critical.value=res$minimum))
+    print(df)
+  }
 }
 
 print(df)
 # View(df)
-df <- df[,c('par', 'icer', 'base.value', 'value')]
+# df <- df[,c('par', 'icer', 'base.value', 'value')]
 write.xlsx(df, 'output/results/critical_values.xlsx')

@@ -1,11 +1,11 @@
 # library(Cairo)
 
-setwd('~/Documents/models_ce/anus')
+# setwd('~/Documents/models_ce/anus')
 
 source('load_models.R')
 source('markov_dsa.R')
 
-N.PARAM.POINTS.TORNADO <- 4
+N.PARAM.POINTS.TORNADO <- 2
 DISCOUNT.RATE <- .03
 N.CORES <- 8
 
@@ -22,7 +22,7 @@ pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
 dsa.pars <- list(
-  all=pars
+  # all=pars
   # ,
   # p_01=c('p_hra_hsil___cyto_hsil__no_hsil')
   # ,
@@ -40,13 +40,15 @@ dsa.pars <- list(
   # utilities=pars[startsWith(pars, '.u_') |
   #                startsWith(pars, 'u_')]
   # ,
-  # probs=pars[startsWith(pars, '.p_') |
-  #              startsWith(pars, 'p_') |
-  #              startsWith(pars, '.rate_') |
-  #              startsWith(pars, '.sensitivity_') |
-  #              startsWith(pars, '.specificity_') |
-  #              startsWith(pars, '.survival_') |
-  #              startsWith(pars, '.hr_')]
+  probs=pars[startsWith(pars, '.p_') |
+               startsWith(pars, 'p_') |
+               startsWith(pars, '.rate_') |
+               startsWith(pars, '.sensitivity_') |
+               startsWith(pars, '.specificity_') |
+               startsWith(pars, '.survival_') |
+               startsWith(pars, 'survival_') |
+               startsWith(pars, '.hr_') |
+               startsWith(pars, 'n_')]
   # ,
   # ranged=pars[sapply(pars,
   #                    function(p)
@@ -61,6 +63,18 @@ GET.RANGE.FUNC <- function(range) {
   function(par.name, val, strat.name) {
     if (any(startsWith(par.name, c('p_', '.p_', '.rate', '.sensitivity_', '.specificity_', '.survival_', 'survival_', '.u_', 'u')))) {
       return(c(val*max(0, 1-range), min(1, val*(1+range))))
+    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
+      return(c(val*max(0, 1-range), val*(1+range)))
+    }
+  }
+}
+
+GET.RANGE.FUNC.TRUNC <- function(range) {
+  function(par.name, val, strat.name) {
+    if (any(startsWith(par.name, c('p_', '.p_', '.rate', '.sensitivity_', '.specificity_', '.survival_', 'survival_')))) {
+      return(c(val*max(0, 1-range), min(1, val*(1+range))))
+    } else if (any(startsWith(par.name, c('.u_', 'u')))) {
+      return(c(val*max(0, 1-range), min(0.84, val*(1+range))))
     } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
       return(c(val*max(0, 1-range), val*(1+range)))
     }
@@ -102,35 +116,43 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
   # ,
   range_10=GET.RANGE.FUNC(.1)
   ,
-  # range_20=GET.RANGE.FUNC(.2)
-  # ,
+  range_20=GET.RANGE.FUNC(.2)
+  ,
   # range_25=GET.RANGE.FUNC(.25)
   # ,
   range_50=GET.RANGE.FUNC(.5)
   # ,
+  # range_10_t=GET.RANGE.FUNC.TRUNC(.1)
+  # ,
+  # range_20_t=GET.RANGE.FUNC.TRUNC(.2)
+  # ,
+  # range_25=GET.RANGE.FUNC(.25)
+  # ,
+  # range_50_t=GET.RANGE.FUNC.TRUNC(.5)
   # range_100=GET.RANGE.FUNC(1)
 )
 
 SIMULATION.OPTIONS <- list(
-  # tca=list(
-  #   population='hiv_msm',
-  #   reference='conventional_t_tca',
-  #   strategy='arnme6e7_hpvhr_t_tca',
-  #   display.name='ARN HPV-HR (TCA)'
-  # ),
   irc=list(
     population='hiv_msm',
     reference='conventional_t_irc',
     strategy='arnme6e7_hpvhr_t_irc',
     display.name='ARN HPV-HR (IRC)'
   )
-  # ,
-  # arnhpvhr=list(
-  #   population='hiv_msm',
-  #   reference='arnme6e7_hpvhr_t_irc',
-  #   strategy='arnme6e7_hpvhr_t_tca',
-  #   display.name='ARN HPV-HR (TCA)'
-  # )
+  ,
+  tca=list(
+    population='hiv_msm',
+    reference='conventional_t_tca',
+    strategy='arnme6e7_hpvhr_t_tca',
+    display.name='ARN HPV-HR (TCA)'
+  )
+  ,
+  arnhpvhr=list(
+    population='hiv_msm',
+    reference='arnme6e7_hpvhr_t_irc',
+    strategy='arnme6e7_hpvhr_t_tca',
+    display.name='ARN HPV-HR (TCA)'
+  )
   # ,
   # treatment=list(
   #   population='hiv_msm',
@@ -186,7 +208,7 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
   if (dsa.type != 'bivariate') {
     for(i in seq_along(results$plots)) {
       htmlwidgets::saveWidget(ggplotly(results$plots[[i]]),
-                              paste0(output.dir, '/', filename, '_', i, '.html'),
+                              paste0(output.dir, '/', filename, '_', suffixes[i], '.html'),
                               title=display.name,
                               libdir=paste0(output.dir, '/lib'))
     }
@@ -226,7 +248,8 @@ for(param.set.name in names(dsa.pars)) {
                        n.cores = n.cores,
                        range.estimate=range.estimate.func,
                        context.setup.func=context.setup,
-                       discount.rate = DISCOUNT.RATE)
+                       discount.rate = DISCOUNT.RATE,
+                       use.param.display.names=FALSE)
       filename <- paste0(option.name, '__', range.estimate.name, '_params_', param.set.name)
       store.results.dsa(results, 'univariate', options$population, options$display.name, filename)
     }

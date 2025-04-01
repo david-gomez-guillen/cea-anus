@@ -9,8 +9,8 @@ markov.outputs <- list()
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
 markov.result <- simulate('hiv_msm',
-                           # strategies$hiv_msm,
-                          strategies$hiv_msm['no_intervention'],
+                           strategies$hiv_msm,
+                          # strategies$hiv_msm['no_intervention'],
                           # strategies$hiv_msm[c('conventional_t_irc', 'arnme6e7_hpvhr_t_irc')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_irc', 'arnme6e7_hpvhr_t_tca')],
@@ -24,8 +24,8 @@ markov.result <- simulate('hiv_msm',
 
 print(markov.result$plot)
 print(markov.result$summary)
-plot(markov.result$info$no_intervention$additional.info$incidence_hsil, type='l')
-print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
+# plot(markov.result$info$no_intervention$additional.info$incidence_hsil, type='l')
+# print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
 
 # x <- markov.result$info$conventional$additional.info
 # xt <- markov.result$info$conventional_t$additional.info

@@ -233,32 +233,47 @@ get.initial.guess <- function() {
 plot.calibration.state <- function(pars) {
   other.pars <- pars[-seq(1,24,3)]
   ac.pars <- pars[seq(1,24,3)]
-
+  
   df <- data.frame(age=rep(1:8, each=2), val=other.pars, probs=c(rep(c('hsil_regression', 'hsil'), 8)))
-  plt <- ggplot(df, aes(x=age, y=val, color=probs)) + geom_line()
-
+  plt <- ggplot(df, aes(x=age, y=val, color=probs)) + 
+    geom_line() + 
+    scale_x_continuous(breaks=1:8, labels=paste0(seq(40,75,5), '-', seq(44,79,5))) +
+    theme_minimal() +
+    theme(panel.grid.minor=element_blank())
+  
   dff <- data.frame(age=rep(1:8), val=ac.pars, probs=c(rep(c('cancer'), 8)))
-  pltt <- ggplot(dff, aes(x=age, y=val, color=probs)) + geom_line()
-
+  pltt <- ggplot(dff, aes(x=age, y=val, color=probs)) + 
+    geom_line() +
+    scale_x_continuous(breaks=1:8, labels=paste0(seq(40,75,5), '-', seq(44,79,5))) +
+    theme_minimal() +
+    theme(panel.grid.minor=element_blank())
+  
   hsil.inc <- calculate.hsil.incidence(pars)
   df2 <- data.frame(age=rep(1:8, 2),
                     val=c(hsil.inc, rep(TARGET.INC.HSIL, 8)),
                     type=c(rep('simulation', 8), rep('target', 8)))
   plt2 <- ggplot(df2, aes(x=age, y=val, linetype=type)) + geom_line() +
     ylab('HSIL incidence') +
-    ggtitle(paste0('Mean HSIL incidence: ', mean(hsil.inc)))
+    ggtitle(paste0('Mean HSIL incidence: ', mean(hsil.inc))) +
+    scale_x_continuous(breaks=1:8, labels=paste0(seq(40,75,5), '-', seq(44,79,5))) +
+    theme_minimal() +
+    theme(panel.grid.minor=element_blank())
 
   ac.inc <- calculate.ac.incidence(pars)
   df3 <- data.frame(age=rep(1:8, 2),
                     val=c(ac.inc, TARGET.INC.AC),
                     linetype=c(rep('simulation', 8), rep('target', 8)))
-  plt3 <- ggplot(df3, aes(x=age, y=val, linetype=linetype)) + geom_line() + ylab('Cancer incidence')
+  plt3 <- ggplot(df3, aes(x=age, y=val, linetype=linetype)) + 
+    geom_line() + ylab('Cancer incidence') +
+    scale_x_continuous(breaks=1:8, labels=paste0(seq(40,75,5), '-', seq(44,79,5))) +
+    theme_minimal() +
+    theme(panel.grid.minor=element_blank())
   grid.arrange(plt, pltt, plt2, plt3, ncol=1)
 }
 
 initial.guess <- ctx.to.calib.vec(strat.ctx)
 
-initial.guess[seq(1,24,3)] <- rev(initial.guess[seq(1,24,3)])
+# initial.guess[seq(1,24,3)] <- rev(initial.guess[seq(1,24,3)])
 
 ### Calibration tests
 
@@ -286,12 +301,11 @@ res <- cma_es(initial.guess,
 cat('Elapsed time: ', as.numeric(difftime(Sys.time(), start.time, units='min')), ' min')
 cat('Evaluations: ', eval.count)
 
+# CALIBRATED VALUES FOR NON-CONSTANT HSIL INCIDENCE
 # calibrated.params <- c(
-# 0.003600943, 0.000000000, 0.042698765, 0.003448710, 0.033251917, 0.065748361, 0.003600943, 0.332834516,
-# 0.073456284, 0.003600943, 0.052402072, 0.093412511, 0.002113810, 0.068304628, 0.125737058, 0.001989743,
-# 0.095791788, 0.136370454, 0.001961317, 0.063125718, 0.140180166, 0.001983730, 0.091282439, 0.140690455
+# 0.0033, 0.2259, 0.1757, 0.0026, 0.3416, 0.1799, 0.0032, 0.1599, 0.0632, 0.0029, 0.0762, 0.0915, 0.0025, 0.0806, 0.0549, 0.0031, 0.0840, 0.0283, 0.0033, 0.0278, 0.0362, 0.0022, 0.0167, 0.1626
 # )
-# calibrated.params <- c(0.0058691355195081, 0.00344980252811424, 0.00324775583133558, 0.00258766335262408, 0.00193687668776452, 0.0018456703895995, 0.00184691109687812, 0.0018916537948187)
+
 # calibrated.params <- res$par
 
 uncalibrated.params <- c(

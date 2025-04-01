@@ -202,7 +202,8 @@ dsa.1 <- function(pars,
                 n.cores=1,
                 cluster=NULL,
                 sample.by.stratum=FALSE,
-                keep.all.strategies=FALSE) {
+                keep.all.strategies=FALSE,
+                use.param.display.names=TRUE) {
   if (!all(pars %in% names(strat.ctx[[1]])))
     stop(paste0("Some parameters don't exist in the context: ",
                 paste0('"', pars[!pars %in% names(strat.ctx[[1]])], '"', collapse = ', ')))
@@ -371,7 +372,10 @@ dsa.1 <- function(pars,
   #   plot.curves=plot.curves(results[results$strategy==strategy,], pars)
   #   ))
 
-  param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
+  if (use.param.display.names)
+    param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
+  else
+    param.display.names <- NULL
 
   ret <- plot.tornado(results[results$strategy==strategy,], population, reference=reference, param.display.names=param.display.names, WTP = 25000)
   plt <- ret[[1]]
@@ -727,7 +731,7 @@ plot.tornado <- function(results,
         labels=labels,
         limits = c(0, length(unique(plot.df$param))+1),
         oob=squish_infinite) +
-      ggtitle(paste0('Tornado diagram [', results$strategy[1], ' vs ', reference, '] (Base ICER = ', formatC(base.icer, digits = 0, format = 'd'), ' €/QALY)')) +
+      ggtitle(paste0(results$strategy[1], ' vs ', reference, ' (Base ICER = ', formatC(base.icer, digits = 0, format = 'd'), ' €/QALY)')) +
       theme_minimal() +
       theme(panel.grid.minor = element_blank(), plot.title = element_text(size=10))
   } else {
