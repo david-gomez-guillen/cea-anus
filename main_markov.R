@@ -11,9 +11,9 @@ initial.state <- sapply(markov$nodes,
 markov.result <- simulate('hiv_msm',
                            strategies$hiv_msm,
                           # strategies$hiv_msm['no_intervention'],
-                          # strategies$hiv_msm[c('conventional_t_irc', 'arnme6e7_hpvhr_t_irc')],
+                          # strategies$hiv_msm[c('conventional_t_tca', 'arnme6e7_hpvhr_t_tca')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc')],
-                          # strategies$hiv_msm[c('arnme6e7_hpvhr_t_irc', 'arnme6e7_hpvhr_t_tca')],
+                          # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'conventional_t_tca')],
                            markov,
                            strat.ctx,
                            initial.state,
@@ -22,7 +22,7 @@ markov.result <- simulate('hiv_msm',
 # Remove redundant suffix for strategy names
 # markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
 
-print(markov.result$plot)
+# ggplotly(markov.result$plot)
 print(markov.result$summary)
 # plot(markov.result$info$no_intervention$additional.info$incidence_hsil, type='l')
 # print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
@@ -49,8 +49,8 @@ cat('Done.\n')
 ### Parameter combination set
 
 arn.cost.values <- c(6, 25)
-discount.values <- c(0, .03)
-delayed.cancer.cost.values <- c(0, 100, 3189)
+discount.values <- c(0, .03, .05)
+delayed.cancer.cost.values <- c(3189)
 
 markov.results <- list()
 
@@ -106,11 +106,13 @@ summary.df <- lapply(names(markov.results[[1]]$info), function(strat) {
   info.sum
 }) %>% bind_rows()
 
-summary.df <- summary.df[,c(21:35, 2:20)]
-summary.df[,c(16:34)] <- summary.df[,c(16:34)] * 100000
+summary.df <- summary.df[,c(21:ncol(summary.df), 2:20)]
+summary.df[,grepl('^(n_|incidence_)', names(summary.df))] <- summary.df[,grepl('^(n_|incidence_)', names(summary.df))] * 100000
 
+strategies.order <- c('arnme6e7_hpv16_t_tca', 'arnme6e7_hpv16_t_irc', 'arnme6e7_hpv16', 'arnme6e7_hpv161845_t_tca', 'arnme6e7_hpv161845_t_irc', 'arnme6e7_hpv161845', 'arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc', 'arnme6e7_hpvhr', 'ascus_lsil_diff_arnme6e7_hpv16_t_tca', 'ascus_lsil_diff_arnme6e7_hpv16_t_irc', 'ascus_lsil_diff_arnme6e7_hpv16', 'ascus_lsil_diff_arnme6e7_hpv161845_t_tca', 'ascus_lsil_diff_arnme6e7_hpv161845_t_irc', 'ascus_lsil_diff_arnme6e7_hpv161845', 'ascus_lsil_diff_arnme6e7_hpvhr_t_tca', 'ascus_lsil_diff_arnme6e7_hpvhr_t_irc', 'ascus_lsil_diff_arnme6e7_hpvhr', 'ascus_lsil_diff_hpv1618la_t_tca', 'ascus_lsil_diff_hpv1618la_t_irc', 'ascus_lsil_diff_hpv1618la', 'ascus_lsil_diff_hpv16la_t_tca', 'ascus_lsil_diff_hpv16la_t_irc', 'ascus_lsil_diff_hpv16la', 'ascus_lsil_diff_hpvhrhc_t_tca', 'ascus_lsil_diff_hpvhrhc_t_irc', 'ascus_lsil_diff_hpvhrhc', 'ascus_lsil_diff_hpvhrla_t_tca', 'ascus_lsil_diff_hpvhrla_t_irc', 'ascus_lsil_diff_hpvhrla', 'conventional_hpv1618la_t_tca', 'conventional_hpv1618la_t_irc', 'conventional_hpv1618la', 'conventional_hpv16la_t_tca', 'conventional_hpv16la_t_irc', 'conventional_hpv16la', 'conventional_hpvhrhc_t_tca', 'conventional_hpvhrhc_t_irc', 'conventional_hpvhrhc', 'conventional_hpvhrla_t_tca', 'conventional_hpvhrla_t_irc', 'conventional_hpvhrla', 'conventional_t_tca', 'conventional_t_irc', 'conventional', 'no_intervention')
+summary.df <- summary.df[match(strategies.order, summary.df$strategy),]
 write.xlsx(summary.df, 'output/results/summary_anus_long.xlsx')
-# summary.df <- read.xlsx('output/results/summary_anus_new_v4_long.xlsx', sheetIndex=1)
+# summary.df <- read.xlsx('output/results/summary_anus_long.xlsx', sheetIndex=1)
 
 summary.df$strat.treatment <- 'followup'
 summary.df[endsWith(summary.df$strategy, '_t_tca'), 'strat.treatment'] <- 'TCA'
@@ -123,13 +125,26 @@ summary.df$ascus.diff <- ifelse(startsWith(summary.df$strategy, 'ascus_lsil_diff
                                 'no.ascus.diff')
 summary.df[summary.df$strat.basename=='conventional','ascus.diff'] <- 'conventional'
 summary.df[summary.df$strat.basename=='no_intervention','ascus.diff'] <- 'no_intervention'
+# summary.df$strategy <- NULL
+
+summary.names <- c('strategy')
+for(discount in discount.values) {
+  summary.names <- c(summary.names, names(summary.df)[grepl(paste0('^qalys.disc.', discount, '$'), names(summary.df))])
+  for(arn.cost in arn.cost.values) {
+    for(delayed.cancer.cost in delayed.cancer.cost.values) {
+      summary.names <- c(summary.names, names(summary.df)[grepl(paste0('^cost.disc_', discount, '_arn_', arn.cost), names(summary.df))])
+    }
+  }
+}
+summary.names <- c(summary.names, names(summary.df)[11:ncol(summary.df)])
+summary.df <- summary.df[,summary.names]
 summary.df$strategy <- NULL
 
-summary.df <- summary.df[c(31, 44, 45, 38:40, 35:37, 32:34, 41:43, 1:3, 4:6, 7:9, 25:27, 22:24, 19:21, 28:30, 10:12, 13:15, 16:18, 46),]
+# summary.df <- summary.df[c(31, 44, 45, 38:40, 35:37, 32:34, 41:43, 1:3, 4:6, 7:9, 25:27, 22:24, 19:21, 28:30, 10:12, 13:15, 16:18, 46),]
 #
 # summary.df <- summary.df[summary.df$strategy != 'no_intervention',]
 #
-var.names <- names(summary.df)[1:33]
+# var.names <- names(summary.df)[1:33]
 
 strat.names <- c('conventional', 'hpvhrhc', 'hpv16la', 'hpv1618la', 'hpvhrla', 'arnme6e7_hpv16', 'arnme6e7_hpv161845', 'arnme6e7_hpvhr', 'no_intervention')
 treatment.names <- c('followup', 'IRC', 'TCA')
@@ -141,8 +156,9 @@ new.summary.df <- data.frame(strategy=c('conventional',
                                           rep('no.ascus.diff', 7),
                                           rep('ascus.diff', 7),
                                           'no_intervention'))
-for(var.name in var.names) {
+for(var.name in names(summary.df)) {
   for(treatment in treatment.names) {
+    # print(treatment)
     var.summary.df <- summary.df[summary.df$strat.treatment==treatment,]
     var.summary.df.0 <- var.summary.df[var.summary.df$ascus.diff=='conventional',]
     var.summary.df.1 <- var.summary.df[var.summary.df$ascus.diff=='no.ascus.diff',] %>% arrange(factor(strat.basename, strat.names))

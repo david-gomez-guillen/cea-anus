@@ -15,10 +15,10 @@ INTERPOLATE.STRATA <- TRUE
 DISCOUNT.RATE <- .03
 
 DEFAULT.START.AGE <- list(
-  hiv_msm=40
+  hiv_msm=35
 )
 DEFAULT.MAX.AGE <- list(
-  hiv_msm=80
+  hiv_msm=79
 )
 
 if (INTERPOLATE.STRATA) {
@@ -86,6 +86,44 @@ setup.markov <- function(trees, strat.ctx) {
   utilities <- list()
   tpMatrices <- list()
   extended.strat.ctx <- list()
+  
+  # strat.ctx <- lapply(strat.ctx, function(ctx) {
+  #   ctx$p_death_cancer <- 4 * ctx$p_death_cancer
+  #   ctx$p_death_cancer_delayed <- 4 * ctx$p_death_cancer_delayed
+  #   ctx
+  #     })
+  # if (endsWith(trees$hiv_msm$name, '_t_tca')) {
+  #   strat.ctx <- lapply(strat.ctx, function(context) {
+  #     context$p_cancer___hsil_annual <- context$p_cancer___hsil_annual_treatment
+  #     return(context)
+  #   })
+  # } else if (endsWith(trees$hiv_msm$name, '_t_irc')) {
+  #   strat.ctx <- lapply(strat.ctx, function(context) {
+  #     context$p_cancer___hsil_annual <- context$p_cancer___hsil_annual_treatment
+  #     return(context)
+  #   })
+  # } else {
+  #   strat.ctx <- lapply(strat.ctx, function(context) {
+  #     context$p_cancer___hsil_annual <- context$p_cancer___hsil_annual_no_treatment
+  #     return(context)
+  #   })
+  # }
+  # 
+  # 
+  # strat.ctx.old <- strat.ctx
+  # 
+  # strat.ctx <- refresh.context('p_cancer___hsil_annual', strat.ctx, excel.strata.df)
+  
+  # for(strat in names(strat.ctx)) {
+  #   for(par in names(strat.ctx[[strat]])) {
+  #     if (strat.ctx[[strat]][[par]] != strat.ctx.old[[strat]][[par]]) {
+  #       print(paste0(par, ' has changed'))
+  #       browser()
+  #     }
+  #   }
+  # }
+  
+  
   for(stratum in names(strat.ctx)) {
     . <- function(x) {
       if (is.na(x) || length(x) == 0) {
@@ -496,6 +534,7 @@ simulate.markov <- function(trees,
     if (any(next.state < -EPSILON)) {
       # print(trees$hiv_msm$name)
       # print(tpMatrix$strategy)
+      # browser()
       stop('States with negative populations, probabilities might have errors.')
     }
     else if (any(next.state < 0)) {

@@ -9,9 +9,6 @@ N.PARAM.POINTS.TORNADO <- 2
 DISCOUNT.RATE <- .03
 N.CORES <- 8
 
-DEFAULT.START.AGE <- list(hiv_msm=40)
-DEFAULT.MAX.AGE <- list(hiv_msm=80)
-
 EXCLUDED.PARAMS <- names(strat.ctx$y25_29[strat.ctx$y25_29 %in% c(0,1)])
 EXCLUDED.PARAMS <- c(EXCLUDED.PARAMS,
                      'periodicity_months',
@@ -40,16 +37,18 @@ dsa.pars <- list(
   # utilities=pars[startsWith(pars, '.u_') |
   #                startsWith(pars, 'u_')]
   # ,
-  probs=pars[startsWith(pars, '.p_') |
-               startsWith(pars, 'p_') |
-               startsWith(pars, '.rate_') |
-               startsWith(pars, '.sensitivity_') |
-               startsWith(pars, '.specificity_') |
-               startsWith(pars, '.survival_') |
-               startsWith(pars, 'survival_') |
-               startsWith(pars, '.hr_') |
-               startsWith(pars, 'n_')]
+  # probs=pars[startsWith(pars, '.p_') |
+  #              startsWith(pars, 'p_') |
+  #              startsWith(pars, '.rate_') |
+  #              startsWith(pars, '.sensitivity_') |
+  #              startsWith(pars, '.specificity_') |
+  #              startsWith(pars, '.survival_') |
+  #              startsWith(pars, 'survival_') |
+  #              startsWith(pars, '.hr_') |
+  #              startsWith(pars, 'hr_') |
+  #              startsWith(pars, 'n_')]
   # ,
+  test='p_death_other_annual_rate'
   # ranged=pars[sapply(pars,
   #                    function(p)
   #                      any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
@@ -63,7 +62,7 @@ GET.RANGE.FUNC <- function(range) {
   function(par.name, val, strat.name) {
     if (any(startsWith(par.name, c('p_', '.p_', '.rate', '.sensitivity_', '.specificity_', '.survival_', 'survival_', '.u_', 'u')))) {
       return(c(val*max(0, 1-range), min(1, val*(1+range))))
-    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
+    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_')))) {
       return(c(val*max(0, 1-range), val*(1+range)))
     }
   }
@@ -75,7 +74,7 @@ GET.RANGE.FUNC.TRUNC <- function(range) {
       return(c(val*max(0, 1-range), min(1, val*(1+range))))
     } else if (any(startsWith(par.name, c('.u_', 'u')))) {
       return(c(val*max(0, 1-range), min(0.84, val*(1+range))))
-    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
+    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_')))) {
       return(c(val*max(0, 1-range), val*(1+range)))
     }
   }
@@ -133,26 +132,26 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
 )
 
 SIMULATION.OPTIONS <- list(
-  irc=list(
-    population='hiv_msm',
-    reference='conventional_t_irc',
-    strategy='arnme6e7_hpvhr_t_irc',
-    display.name='ARN HPV-HR (IRC)'
-  )
-  ,
+  # irc=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_irc',
+  #   strategy='arnme6e7_hpvhr_t_irc',
+  #   display.name='ARN HPV-HR (IRC)'
+  # )
+  # ,
   tca=list(
     population='hiv_msm',
     reference='conventional_t_tca',
     strategy='arnme6e7_hpvhr_t_tca',
     display.name='ARN HPV-HR (TCA)'
   )
-  ,
-  arnhpvhr=list(
-    population='hiv_msm',
-    reference='arnme6e7_hpvhr_t_irc',
-    strategy='arnme6e7_hpvhr_t_tca',
-    display.name='ARN HPV-HR (TCA)'
-  )
+  # ,
+  # arnhpvhr=list(
+  #   population='hiv_msm',
+  #   reference='arnme6e7_hpvhr_t_irc',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   display.name='ARN HPV-HR (TCA)'
+  # )
   # ,
   # treatment=list(
   #   population='hiv_msm',

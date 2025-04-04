@@ -3,7 +3,7 @@ library(dplyr)
 source('load_models.R')
 source('markov.R')
 
-VARIATION <- 1
+VARIATION <- 2
 
 # strategy <- 'arnme6e7_hpvhr_t_irc'
 # reference <- 'conventional_t_irc'
@@ -68,6 +68,7 @@ icer.diff <- function(par.val, par.name, age.group=NULL) {
   return(error)
 }
 
+par.list <- c('c_arn_kit')
 # par.list <- pars[startsWith(pars, 'u_')]
 # par.list <- c('u_hiv_p',
 #               'p_cyto_b___hsil',
@@ -110,7 +111,7 @@ icer.diff <- function(par.val, par.name, age.group=NULL) {
 # )
 
 # Age-specific
-par.list <- c('p_hsil_regression_annual')
+# par.list <- c('p_hsil_regression_annual')
 
 # IRC
 # par.list <- c('c_arn_kit','c_hra_treatment','c_surgery_delayed','p_arnmhr_p___hsil',
