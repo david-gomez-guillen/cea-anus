@@ -1,5 +1,5 @@
-BETA.PREFFIXES <- c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_', '.rate')
-GAMMA.PREFFIXES <- c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')
+BETA.PREFFIXES <- c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_', '.rate', 'rate')
+GAMMA.PREFFIXES <- c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_')
 
 fit.parameter <- function(par, mean, sd, dist=NULL) {
   if (!is.null(dist)) {

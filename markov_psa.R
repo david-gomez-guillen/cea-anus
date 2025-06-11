@@ -24,12 +24,14 @@ psa.1 <- function(pars,
                   population,
                   strategy,
                   markov,
+                  reference,
                   discount.rate=DISCOUNT.RATE.DEFAULT,
                   sd.estimate.func=function(p,mu)mu,
                   context.setup.func=NULL,
                   n.iters=N.ITERS.DEFAULT,
                   n.cores=NULL,
                   sample.by.stratum=FALSE,
+                  cluster=NULL,
                   seed=0) {
   if (!all(pars %in% names(strat.ctx[[1]])))
     stop(paste0("Some parameters don't exist in the context: ", 
@@ -191,7 +193,8 @@ psa.n <- function(pars,
                                            context.setup.func=context.setup.func)
         count <- count + 1
       }
-      initial.state <- ifelse(seq_along(markov$nodes)==1, 1, 0)
+      initial.state <- sapply(markov$nodes,
+                              function(n) if (n$name=='hiv_positive') 1 else 0)
       names(initial.state) <- sapply(markov$nodes, function(n) n$name)
       psa.result <- 
         tryCatch({
@@ -346,8 +349,8 @@ sample.psa.params <- function(pars, strat.dist.params, strat.ctx, excel.strata.d
   
   results.display[, 'CE_THRESHOLD'] <- Inf
   # results[results$IC < 25000 * results$IE, 'CE_THRESHOLD'] <- 25000
-  results.display[results.display$IC < 22000 * results.display$IE, 'CE_THRESHOLD'] <- 22000
-  WTP.THRESHOLDS <- 22000
+  results.display[results.display$IC < 25000 * results.display$IE, 'CE_THRESHOLD'] <- 25000
+  WTP.THRESHOLDS <- 25000
   COLOR.PALETTE <- c('#2bbe6d', '#f44f59')
   ###
   results.display$CE_THRESHOLD <- factor(results.display$CE_THRESHOLD, levels=c(WTP.THRESHOLDS, Inf))
@@ -492,7 +495,7 @@ store.results.psa <- function(results, psa.type, population, strategy.name, file
   write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
 }
 
-build.plots <- function(psa.type, population, strategy, reference, strat.ctx, sim.options, sd.estimate.name, suffix, pars=NULL, param.set.name=NULL) {
+build.plots <- function(psa.type, population, strategy, reference, strat.ctx, option.name, sim.options, sd.estimate.name, suffix, pars=NULL, param.set.name=NULL) {
   slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
   
   filename.preffix <- paste0(strategy, '__sd_', sd.estimate.name, '__par_')
@@ -584,7 +587,7 @@ build.plots <- function(psa.type, population, strategy, reference, strat.ctx, si
                   plot.acceptability=plt.acc)
     slides <- add.results.to.slide(slides, df, plots, par, sim.options, sd.estimate.name)
   }
-  slides %>% print(paste0('output/psa_', psa.type, '/', sim.options$population, '/', strategy, '__sd_', sd.estimate.name, '__par_', suffix, '.pptx'))
+  slides %>% print(paste0('output/psa_', psa.type, '/', sim.options$population, '/', strategy, '__', option.name, '__sd_', sd.estimate.name, '__par_', suffix, '.pptx'))
 }
 
 add.results.to.slide <- function(slides, summary, plots, par, sim.options, sd.estimate.name) {
@@ -592,41 +595,53 @@ add.results.to.slide <- function(slides, summary, plots, par, sim.options, sd.es
   # par.name <- unname(ifelse(is.na(param.names[par]), par, param.names[par]))
   
 suppressMessages({  
+  x.range <- range(c(plots$plot.scatter$data$IC, 0))
+  y.range <- range(c(plots$plot.scatter$data$IE, 0))
+  
   plot.scatter <- plots$plot.scatter +
-    ggtitle(paste0('PSA (', par, ') SD=', sd.estimate.name)) +
+    ggtitle(full.strat.metadata[[1]][[par]]$display_name) +
     scale_x_continuous(labels=scales::number_format(big.mark=',')) +
-    xlab(paste0('Incremental cost\n\nWTP = 25,000 €/QALY\n(', 
-                formatC(perc.ce*100, format='f', digits=1), 
-                '% cost-effective)')) +
+    xlab('Incremental cost (€)') +
     ylab('Incremental QALY') +
     theme_classic() +
     theme(legend.position = 'none',
-          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)))
+          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+          plot.title = element_text(hjust=0.5, size = 16)) + 
+    annotate('text', x=0.95*x.range[2], y=0.9*y.range[2], 
+             label='WTP\n€25,000 QALY') +
+    annotate('text', x=0.1*x.range[2], y=0.95*y.range[2], 
+             label=paste0(formatC(perc.ce*100, format='f', digits=1), 
+                          '%\n cost-effective)'))
   
   plot.scatter.j <- plots$plot.scatter.j +
-    ggtitle(paste0('PSA (', par, ' [jitter]) SD=', sd.estimate.name)) +
+    ggtitle(full.strat.metadata[[1]][[par]]$display_name) +
     scale_x_continuous(labels=scales::number_format(big.mark=',')) +
-    xlab(paste0('Incremental cost\n\nWTP = 25,000 €/QALY\n(', 
-                formatC(perc.ce*100, format='f', digits=1), 
-                '% cost-effective)')) +
+    xlab('Incremental cost (€)') +
     ylab('Incremental QALY') +
     theme_classic() +
     theme(legend.position = 'none',
-          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)))
-  
+          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+          plot.title = element_text(hjust=0.5, size = 16)) + 
+    annotate('text', x=0.95*x.range[2], y=0.9*y.range[2], 
+             label='WTP\n€25,000 QALY') +
+    annotate('text', x=0.1*x.range[2], y=0.95*y.range[2], 
+             label=paste0(formatC(perc.ce*100, format='f', digits=1), 
+                          '%\n cost-effective)'))
+
   plot.acceptability <- plots$plot.acceptability +
-    ggtitle('') +
+    ggtitle(full.strat.metadata[[1]][[par]]$display_name) +
     scale_x_continuous(labels=scales::number_format(big.mark=',')) +
-    scale_color_manual(name='Strategy',
+    scale_color_manual(name='',
                        breaks=c(sim.options$reference, sim.options$strategy),
                        labels=c(sim.options$reference.name, sim.options$strategy.name),
                        values=c('#002fff', '#ff9d00')) +
-    xlab('WTP (€/QALY)\n\n\n') +
-    ylab('Probability of cost-effective simulations (%)') +
+    xlab('Willingness to pay (€ per QALY)\n\n\n') +
+    ylab('Percentage cost-effective') +
     theme_classic() +
-    theme(legend.position = c(.8,.9),
+    theme(legend.position = c(.9,.5),
           panel.grid.major = element_line(color='#f2f2f2', linetype='dashed'),
-          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)))
+          axis.title.x = element_text(margin = margin(t = 10, r = 0, b = 0, l = 0)),
+          plot.title = element_text(hjust=0.5, size = 16))
 })  
   
   slides <- slides %>%

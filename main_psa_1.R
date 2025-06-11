@@ -2,14 +2,15 @@ library(officer)
 library(rvg)
 library(magrittr)
 
-setwd('~/Documents/models_ce/anus')
+# setwd('~/Documents/models_ce/anus')
 
 source('load_models.R')
 source('markov_psa.R')
 
 PSA.SEED <- 12345
 N.ITERS <- 1000
-N.CORES <- 8
+N.CORES <- commandArgs(trailingOnly = TRUE)[1]
+if (is.na(N.CORES)) N.CORES <- 2
 DISCOUNT.RATE <- .03
 DEBUG <- F  # 1 core if TRUE
 
@@ -18,7 +19,7 @@ JITTER.Y <- .05
 
 EXCLUDED.PARAMS <- names(strat.ctx$y25_29[strat.ctx$y25_29 %in% c(0,1)])
 EXCLUDED.PARAMS <- c(EXCLUDED.PARAMS, 
-                     'periodicity_months'
+                     'periodicity_months', 'periodicity_times_in_year', 'p_vaccination', 'p_coverage'
 )
 
 pars <- independent.pars
@@ -36,13 +37,13 @@ GET.SD.FUNC <- function(divisor) {
 }
 
 SD.ESTIMATE.FUNCTIONS <- list(
-  # sd_10=GET.SD.FUNC(10)
-  # ,
-  # sd_5=GET.SD.FUNC(5)
+  sd_10=GET.SD.FUNC(10)
+  ,
+  sd_5=GET.SD.FUNC(5)
   # ,
   # sd_2=GET.SD.FUNC(2)
   # ,
-  sd_1=GET.SD.FUNC(1)
+  # sd_1=GET.SD.FUNC(1)
   # ,
   # medium=function(par.name, value) {
   #   # These parameters are considered less trustworthy than the rest
@@ -60,10 +61,10 @@ SD.ESTIMATE.FUNCTIONS <- list(
 SIMULATION.OPTIONS <- list(
   followup=list(
     population='hiv_msm',
-    reference='conventional',
-    strategy='ascus_lsil_diff_arnme6e7_16',
-    reference.name='Conventional',
-    strategy.name='ASCUS/LSIL diff - ARNME6E7 16'
+    reference='conventional_t_tca',
+    strategy='arnme6e7_hpvhr_t_tca',
+    reference.name='Conventional (TCA)',
+    strategy.name='ARNmE6/E7 HPV-HR (TCA)'
   )
   # ,
   # treatment=list(
@@ -78,12 +79,14 @@ SIMULATION.OPTIONS <- list(
 psa.pars <- list(
   # all=pars
   # ,
-  costs=pars[startsWith(pars, 'c_')]
+  # costs=pars[startsWith(pars, 'c_')]
   # ,
   # utilities=pars[startsWith(pars, 'u_')]
   # ,
   # probs=pars[startsWith(pars, 'p_') |
   #              startsWith(pars, 'survival_')]
+  # ,
+  hsil_regression=c('p_hsil_regression_annual')
 )
 
 
@@ -138,6 +141,7 @@ for(param.set.name in names(psa.pars)) {
     
     for(sd.estimate.name in names(SD.ESTIMATE.FUNCTIONS)) {
       sd.estimate.func <- SD.ESTIMATE.FUNCTIONS[[sd.estimate.name]]
+      browser()
       for(par in param.set) {
         filename.preffix <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', par, '__')
         results <- psa.n(par,
@@ -187,7 +191,8 @@ for(param.set.name in names(psa.pars)) {
         filename <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', par)
         store.results.psa(results, 'univariate', options$population, options$strategy.name, filename)
       }
-      build.plots('univariate', options$population, options$strategy, options$reference, strat.ctx, options, sd.estimate.name, suffix=param.set.name, pars=param.set)
+      
+      build.plots('univariate', options$population, options$strategy, options$reference, strat.ctx, option.name, options, sd.estimate.name, suffix=param.set.name, pars=param.set)
     }
   }
 }

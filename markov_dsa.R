@@ -38,7 +38,7 @@ dsa.n <- function(pars,
     range.estimate.func <- function(par, val) {
       if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', '.u_')))) {
         return(c(val*.25, min(1, val*1.75)))
-      } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
+      } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', 'rate_', '.age_', 'n_')))) {
         return(c(val*.25, val*1.75))
       }
     }
@@ -52,7 +52,8 @@ dsa.n <- function(pars,
   strategy.names <- sapply(strategies[[population]], function(s) s$name)
   simulation.strategies <- simulation.strategies[strategy.names %in% c(reference, strategy)]
   if (is.null(initial.state)) {
-    initial.state <- ifelse(seq_along(markov$nodes)==1, 1, 0)
+    initial.state <- sapply(markov$nodes,
+                            function(n) if (n$name=='hiv_positive') 1 else 0)
     names(initial.state) <- sapply(markov$nodes, function(n) n$name)
   }
   if (is.null(n.cores)) n.cores <- detectCores()
@@ -215,7 +216,7 @@ dsa.1 <- function(pars,
     range.estimate.func <- function(par, val) {
       if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', '.u_')))) {
         return(c(val*.25, min(1, val*1.75)))
-      } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_', 'n_')))) {
+      } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', 'rate_', '.age_', 'n_')))) {
         return(c(val*.25, val*1.75))
       }
     }
@@ -227,7 +228,8 @@ dsa.1 <- function(pars,
   strategy.names <- sapply(strategies[[population]], function(s) s$name)
   simulation.strategies <- simulation.strategies[strategy.names %in% c(reference, strategy)]
   if (is.null(initial.state)) {
-    initial.state <- ifelse(seq_along(markov$nodes)==1, 1, 0)
+    initial.state <- sapply(markov$nodes,
+                            function(n) if (n$name=='hiv_positive') 1 else 0)
     names(initial.state) <- sapply(markov$nodes, function(n) n$name)
   }
   if (is.null(n.cores)) n.cores <- detectCores()
@@ -253,7 +255,6 @@ dsa.1 <- function(pars,
                           initial.state,
                           discount.rate=discount.rate)
   base.result <- base.output$summary
-  # browser()
 
   base.ref <- base.result[startsWith(base.result$strategy, reference),]
   base.strat <- base.result[startsWith(base.result$strategy, strategy),]
@@ -419,7 +420,7 @@ dsa.1 <- function(pars,
     range.estimate.func <- function(par, val) {
       if (any(startsWith(par, c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', '.u_')))) {
         return(c(val*.25, min(1, val*1.75)))
-      } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_')))) {
+      } else if (any(startsWith(par, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', 'rate_', '.age_', 'n_')))) {
         return(c(val*.25, val*1.75))
       }
     }
@@ -449,17 +450,18 @@ dsa.1 <- function(pars,
       dsa.strat.ctx <- context.setup.func(dsa.strat.ctx)
     
     if (is.null(initial.state)) {
-      initial.state <- ifelse(seq_along(markov$nodes)==1, 1, 0)
+      initial.state <- sapply(markov$nodes,
+                              function(n) if (n$name=='hiv_positive') 1 else 0)
       names(initial.state) <- sapply(markov$nodes, function(n) n$name)
     }
-    # browser()
+    
     dsa.output <- simulate(population,
                            simulation.strategies,
                            markov,
                            dsa.strat.ctx,
                            initial.state,
                            discount.rate=discount.rate)
-    # browser()
+    
     dsa.result <- dsa.output$summary
     if (keep.all.strategies) {
       iter.result <- data.frame()

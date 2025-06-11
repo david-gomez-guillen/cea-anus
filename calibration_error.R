@@ -104,7 +104,7 @@ calibration.error <- function(pars) {
     print('BEST: ')
     print(best.solution)
 
-    plot.calibration.state(best.solution)
+    plot.calibration.state(best.solution)$summary
   }
   return(error)
 }
@@ -258,72 +258,89 @@ plot.calibration.state <- function(pars) {
   #   theme(panel.grid.minor=element_blank())
   
   dff <- data.frame(age=rep(1:K), val=ac.pars, probs=c(rep(c('cancer'), K)))
-  pltt <- ggplot(dff, aes(x=age, y=val, color=probs)) + 
+  # pltt <- ggplot(dff[dff$age!=1,], aes(x=age, y=val)) + 
+  pltt <- ggplot(dff, aes(x=age, y=val)) + 
     geom_line() +
     scale_x_continuous(breaks=1:K, labels=paste0(seq(CALIB.START.AGE,CALIB.MAX.AGE,5), '-', seq(CALIB.START.AGE+4,CALIB.MAX.AGE+4,5))) +
     theme_minimal() +
     theme(panel.grid.minor=element_blank())
   
-  # browser()
   hsil.inc <- calculate.hsil.incidence(pars)
   df2 <- data.frame(age=rep(1:K, 2),
                     val=c(hsil.inc, rep(TARGET.INC.HSIL, K)),
                     type=c(rep('simulation', K), rep('target', K)))
-  plt2 <- ggplot(df2[df2$age!=1,], aes(x=age, y=val, linetype=type)) + geom_line() +
+  # plt2 <- ggplot(df2[df2$age!=1,], aes(x=age, y=val, linetype=type)) + 
+  plt2 <- ggplot(df2, aes(x=age, y=val, linetype=type)) + 
+    geom_line() +
     ylab('HSIL incidence') +
     ggtitle(paste0('Mean HSIL incidence: ', mean(hsil.inc))) +
     scale_x_continuous(breaks=1:K, labels=paste0(seq(DEFAULT.START.AGE$hiv_msm-5,DEFAULT.MAX.AGE$hiv_msm,5), '-', seq(DEFAULT.START.AGE$hiv_msm-1,DEFAULT.MAX.AGE$hiv_msm+4,5))) +
     theme_minimal() +
-    # ylim(0, max(mean(hsil.inc), TARGET.INC.HSIL)) +
+    ylim(0, max(mean(hsil.inc), TARGET.INC.HSIL)) +
     theme(panel.grid.minor=element_blank())
   plt2
   
   ac.inc <- calculate.ac.incidence(pars)
+  print(ac.inc)
   df3 <- data.frame(age=rep(1:K, 2),
                     val=c(ac.inc, TARGET.INC.AC),
                     linetype=c(rep('simulation', K), rep('target', K)))
-  plt3 <- ggplot(df3[df3$age!=1,], aes(x=age, y=val, linetype=linetype)) + 
+  # plt3 <- ggplot(df3[df3$age!=1,], aes(x=age, y=val, linetype=linetype)) + 
+  plt3 <- ggplot(df3, aes(x=age, y=val, linetype=linetype)) + 
     geom_line() + ylab('Cancer incidence') +
     scale_x_continuous(breaks=1:K, labels=paste0(seq(CALIB.START.AGE,CALIB.MAX.AGE,5), '-', seq(CALIB.START.AGE+4,CALIB.MAX.AGE+4,5))) +
     theme_minimal() +
     theme(panel.grid.minor=element_blank())
   # grid.arrange(plt, pltt, plt2, plt3, ncol=1)
-  grid.arrange(pltt, plt2, plt3, ncol=1)
+  return(list(summary=grid.arrange(pltt, plt2, plt3, ncol=1),
+              params=pltt,
+              hsil.inc=plt2,
+              ac.inc=plt3))
 }
 
 # plot.calibration.state(c(0.007963232, 0.004910898, 0.006778633, 0.006961322, 0.007391491, 0.007806981,
-#                          0.008209872, 0.008587149, 0.008995657))
+#                          0.008209872, 0.008587149, 0.008995657))$summary
 
-# plot.calibration.state(c(0.007273147, 0.004666855, 0.004906142, 0.006724213, 0.007014540, 0.007467946,
-#                          0.007822012, 0.008166392, 0.008589980, 0.008943130))
+# plot.calibration.state(c(0.007273147,
+# 0.004666855,
+# 0.004906142,
+# 0.006724213,
+# 0.00701454,
+# 0.007467946,
+# 0.007822012,
+# 0.008166392,
+# 0.00858998,
+# 0.00894313))$summary
 
-plot.calibration.state(sapply(strat.ctx, function(ctx) ctx$p_cancer___hsil_annual)[2:11])
-browser()
+best.solution <- initial.guess
+best.solution.val <- 1e20
+best.solution.val <- calibration.error(initial.guess)
+
+plot.calibration.state(sapply(strat.ctx, function(ctx) ctx$p_cancer___hsil_annual)[2:11])$summary
+
 initial.guess <- ctx.to.calib.vec(strat.ctx)
 
 # initial.guess[seq(1,24,3)] <- rev(initial.guess[seq(1,24,3)])
 
 ### Calibration tests
 
+
 eval.count <- 0
 start.time <- Sys.time()
-# res <- optim(initial.guess,
-#              calibration.error,
-#              method='L-BFGS-B',
-#              lower=0,
-#              upper=pmin(1, initial.guess*2),
-#              control=list(parscale=rep(1e1, length(initial.guess))))
+res <- optim(initial.guess,
+             calibration.error,
+             method='L-BFGS-B',
+             lower=0,
+             upper=pmin(1, initial.guess*2),
+             control=list(parscale=rep(1e-1, length(initial.guess))))
 
-best.solution <- NULL
-best.solution.val <- 1e10
+plot.calibration.state(initial.guess)$summary
 
-plot.calibration.state(initial.guess)
-
-# res <- cma_es(initial.guess,
-#              calibration.error,
-#              lower=initial.guess*.5,
-#              upper=pmin(1, initial.guess*3),
-#              control=list(parscale=rep(1e1, length(initial.guess))))
+res <- cma_es(initial.guess,
+             calibration.error,
+             lower=initial.guess*.5,
+             upper=pmin(1, initial.guess*3),
+             control=list(parscale=rep(1e-1, length(initial.guess))))
 
 
 cat('Elapsed time: ', as.numeric(difftime(Sys.time(), start.time, units='min')), ' min')
@@ -428,3 +445,23 @@ calibrated.output.hsil <- calculate.hsil.incidence(ctx.to.calib.vec(strat.ctx))
 #                      values=c('black', 'red')) +
 #   theme_minimal()
 # ggplotly(plt)
+
+
+# slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
+# 
+# plots <- plot.calibration.state(sapply(strat.ctx, function(ctx) ctx$p_cancer___hsil_annual)[2:11])
+# 
+# slides <- slides %>%
+#   add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+#   ph_with(rvg::dml(ggobj=plots$params + 
+#                      ylab('Calibrated annual probability of cancer')), ph_location_type('body', id=1))
+# 
+# slides <- slides %>%
+#   add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+#   ph_with(rvg::dml(ggobj=plots$hsil.inc), ph_location_type('body', id=1))
+# 
+# slides <- slides %>%
+#   add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+#   ph_with(rvg::dml(ggobj=plots$ac.inc), ph_location_type('body', id=1))
+# 
+# slides %>% print(paste0('output/calibration.pptx'))

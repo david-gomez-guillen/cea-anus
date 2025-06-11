@@ -5,7 +5,7 @@
 source('load_models.R')
 source('markov_dsa.R')
 
-N.PARAM.POINTS.TORNADO <- 2
+N.PARAM.POINTS.TORNADO <- 2 
 DISCOUNT.RATE <- .03
 N.CORES <- 8
 
@@ -19,7 +19,7 @@ pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
 dsa.pars <- list(
-  # all=pars
+  all=pars
   # ,
   # p_01=c('p_hra_hsil___cyto_hsil__no_hsil')
   # ,
@@ -46,9 +46,13 @@ dsa.pars <- list(
   #              startsWith(pars, 'survival_') |
   #              startsWith(pars, '.hr_') |
   #              startsWith(pars, 'hr_') |
+  #              startsWith(pars, 'rate_') |
   #              startsWith(pars, 'n_')]
   # ,
-  test='p_death_other_annual_rate'
+  # critical=c('p_cyto_b___hsil', 'p_undetected_hsil_treatment_whole_followup',
+  #            'p_arnmhr_p___hsil', 'p_cd4_g500', 'u_hiv_p_cd4_g500')
+  # ,
+  # test='p_hra_hsil___cyto_hsil__hsil'
   # ranged=pars[sapply(pars,
   #                    function(p)
   #                      any(full.strat.ctx$y25_29[[p]][2:3] != c(-1, -1)))]
@@ -62,7 +66,7 @@ GET.RANGE.FUNC <- function(range) {
   function(par.name, val, strat.name) {
     if (any(startsWith(par.name, c('p_', '.p_', '.rate', '.sensitivity_', '.specificity_', '.survival_', 'survival_', '.u_', 'u')))) {
       return(c(val*max(0, 1-range), min(1, val*(1+range))))
-    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_')))) {
+    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', 'rate_', '.age_', 'n_')))) {
       return(c(val*max(0, 1-range), val*(1+range)))
     }
   }
@@ -74,7 +78,7 @@ GET.RANGE.FUNC.TRUNC <- function(range) {
       return(c(val*max(0, 1-range), min(1, val*(1+range))))
     } else if (any(startsWith(par.name, c('.u_', 'u')))) {
       return(c(val*max(0, 1-range), min(0.84, val*(1+range))))
-    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_')))) {
+    } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', 'rate_', '.age_', 'n_')))) {
       return(c(val*max(0, 1-range), val*(1+range)))
     }
   }
@@ -106,24 +110,24 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
   #     } else {
   #       return(c(val*.75, min(1, val*1.25)))
   #     }
-  #   } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', '.age_')))) {
+  #   } else if (any(startsWith(par.name, c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', 'rate_', '.age_')))) {
   #     return(c(val*.75, val*1.25))
   #   }
   # }
   # ,
   # not_ranged_5=GET.RANGE.FUNC(.05)
   # ,
-  range_10=GET.RANGE.FUNC(.1)
-  ,
-  range_20=GET.RANGE.FUNC(.2)
-  ,
+  # range_10=GET.RANGE.FUNC(.1)
+  # ,
+  # range_20=GET.RANGE.FUNC(.2)
+  # ,
   # range_25=GET.RANGE.FUNC(.25)
   # ,
-  range_50=GET.RANGE.FUNC(.5)
+  # range_50=GET.RANGE.FUNC(.5)
   # ,
   # range_10_t=GET.RANGE.FUNC.TRUNC(.1)
   # ,
-  # range_20_t=GET.RANGE.FUNC.TRUNC(.2)
+  range_20_t=GET.RANGE.FUNC.TRUNC(.2)
   # ,
   # range_25=GET.RANGE.FUNC(.25)
   # ,
@@ -181,6 +185,22 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
     #        device = 'pdf'
     #        # device = 'cairo_pdf'
     # )
+  }
+  
+  for(i in seq_along(results$plots)) {
+    slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
+    
+    slides <- slides %>%
+      add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+      ph_with(rvg::dml(ggobj=results$plots[[1]]), ph_location_type('body', id=1))
+    
+    slides <- slides %>%
+      add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+      ph_with(rvg::dml(ggobj=results$plots[[3]]), ph_location_type('body', id=1))
+    
+    # TODO: Fix path
+    slides %>% print(paste0('output/dsa_univariate/hiv_msm/tornado.pptx'))
+    
   }
   # ggsave(paste0(output.dir, '/', filename, '_2.pdf'),
   #        plot = results$plot2,

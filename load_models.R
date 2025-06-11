@@ -117,8 +117,8 @@ get.calibrated.params <- function() {
   return(c('p_cancer___hsil_annual'))
 }
 
-DEFAULT.CALIBRATED.START.AGE <- 40
-DEFAULT.CALIBRATED.MAX.AGE <- 80
+DEFAULT.CALIBRATED.START.AGE <- 30
+DEFAULT.CALIBRATED.MAX.AGE <- 79
 age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
 CALIB.PARAMS <- c('p_cancer___hsil_annual')
 # CALIB.PARAMS <- c(  'p_cancer___hsil_annual'

@@ -2,14 +2,15 @@ library(officer)
 library(rvg)
 library(magrittr)
 
-setwd('~/Documents/models_ce/anus')
+# setwd('~/Documents/models_ce/anus')
 
 source('load_models.R')
 source('markov_psa.R')
 
-PSA.SEED <- 1234
+PSA.SEED <- 12345
 N.ITERS <- 1000
-N.CORES <- 8
+N.CORES <- commandArgs(trailingOnly = TRUE)[1]
+if (is.na(N.CORES)) N.CORES <- 8
 DISCOUNT.RATE <- .03
 DEBUG <- F  # 1 core if TRUE
 
@@ -18,7 +19,7 @@ JITTER.Y <- .05
 
 EXCLUDED.PARAMS <- names(strat.ctx$y25_29[strat.ctx$y25_29 %in% c(0,1)])
 EXCLUDED.PARAMS <- c(EXCLUDED.PARAMS, 
-                     'periodicity_months'
+                     'periodicity_months', 'periodicity_times_in_year', 'p_vaccination', 'p_coverage'
 )
 
 pars <- independent.pars
@@ -60,31 +61,49 @@ SD.ESTIMATE.FUNCTIONS <- list(
 SIMULATION.OPTIONS <- list(
   followup=list(
     population='hiv_msm',
-    reference='conventional',
-    strategy='ascus_lsil_diff_arnme6e7_16',
-    reference.name='Conventional',
-    strategy.name='ASCUS/LSIL diff - ARNME6E7 16'
+    reference='conventional_t_tca',
+    strategy='arnme6e7_hpvhr_t_tca',
+    reference.name='Conventional (TCA)',
+    strategy.name='ARNmE6/E7 HPV-HR (TCA)'
   )
   # ,
-  # treatment=list(
+  # irc_tca=list(
   #   population='hiv_msm',
-  #   reference='conventional_t_tca',
-  #   strategy='ascus_lsil_diff_arnme6e7_16_t_tca',
-  #   reference.name='Conventional (TCA)',
-  #   strategy.name='ASCUS/LSIL diff - ARNME6E7 16 (TCA)'
+  #   reference='arnme6e7_hpvhr_t_irc',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   reference.name='ARNmE6/E7 HPV-HR (IRC)',
+  #   strategy.name='ARNmE6/E7 HPV-HR (TCA)'
   # )
 )
 
 psa.pars <- list(
-  # all=pars
+  all=pars
   # ,
-  costs=pars[startsWith(pars, 'c_')]
+  # all_no_costs=pars[!startsWith(pars, 'c')]
+  # ,
+  # costs=pars[startsWith(pars, 'c_')]
   # ,
   # utilities=pars[startsWith(pars, 'u_')]
   # ,
   # probs=pars[startsWith(pars, 'p_') |
   #              startsWith(pars, 'survival_')]
+  # ,
+  # sensitivities=pars[(startsWith(pars, 'p_hpv') | startsWith(pars, 'p_arn')) & endsWith(pars, '___hsil')]
+  # ,
+  # specificities=pars[(startsWith(pars, 'p_hpv') | startsWith(pars, 'p_arn')) & endsWith(pars, '___no_hsil')]
+  # ,
+  # sensitivities_specificities=pars[(startsWith(pars, 'p_hpv') | startsWith(pars, 'p_arn')) & (endsWith(pars, '___no_hsil') | endsWith(pars, '___hsil'))]
+  # ,
+  # irc_tca=c('c_irc', 'c_tca_single', 'n_tca', 'p_arnmhr_p___hsil', 'p_arnmhr_p___no_hsil', 
+  #                 'p_no_hsil___hsil_irc', 'p_no_hsil___hsil_tca', 'u_hsil___irc', 'u_hsil___tca')
+  # ,
+  # tornados=c('u_hiv_p_cd4_g500', 'p_cd4_g500', 'p_cyto_b___hsil',
+  #            'p_arnmhr_p___hsil', 'p_undetected_hsil_treatment_whole_followup')
 )
+for(p in pars[!pars %in% psa.pars$tornados]) {
+  psa.pars[[paste0('tornado_plus_', p)]] <- c(psa.pars$tornados, p)
+}
+psa.pars$tornados <- NULL
 
 param.names <- c(
   .specificity_molecular='Molecular test specificity',
@@ -256,8 +275,8 @@ for(param.set.name in names(psa.pars)) {
     
       filename <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', param.set.name)
       store.results.psa(results, 'multivariate', options$population, options$strategy.name, filename)
-      
-      build.plots('multivariate', options$population, options$strategy, options$reference, strat.ctx, options, sd.estimate.name, suffix=param.set.name, param.set.name=param.set.name)
+
+      build.plots('multivariate', options$population, options$strategy, options$reference, strat.ctx, option.name, options, sd.estimate.name, suffix=param.set.name, param.set.name=param.set.name)
     }
   }
 }

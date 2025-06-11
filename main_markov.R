@@ -6,12 +6,21 @@ source('markov.R')
 cat('Running markov model...\n')
 markov.outputs <- list()
 
+# strat.ctx <- calib.vec.to.ctx(c(0.015027386, 0.009373967, 0.009985705, 0.013777898, 0.014339516, 0.015269283, 0.016174015, 0.017038861, 0.017901899, 0.018764908), strat.ctx = strat.ctx)
+# strat.ctx <- refresh.context('p_cancer___hsil_annual', strat.ctx, excel.strata.df)
+
+# strat.ctx <- lapply(strat.ctx, function(ctx) {ctx$p_arnmhr_p___no_hsil <- 0; ctx})
+# strat.ctx <- refresh.context('p_arnmhr_p___no_hsil', strat.ctx, excel.strata.df)
+
+# strat.ctx <- lapply(strat.ctx, function(ctx) {ctx$p_vaccination <- .2744; ctx})
+# strat.ctx <- refresh.context('p_vaccination', strat.ctx, excel.strata.df)
+
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
 markov.result <- simulate('hiv_msm',
-                           strategies$hiv_msm,
-                          # strategies$hiv_msm['no_intervention'],
-                          # strategies$hiv_msm[c('conventional_t_tca', 'arnme6e7_hpvhr_t_tca')],
+                           # strategies$hiv_msm,
+                          # strategies$hiv_msm[c('no_intervention', 'conventional')],
+                          strategies$hiv_msm[c('conventional_t_tca', 'arnme6e7_hpvhr_t_tca')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc')],
                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'conventional_t_tca')],
                            markov,
@@ -19,11 +28,10 @@ markov.result <- simulate('hiv_msm',
                            initial.state,
                            discount.rate=.03)
 
+print(markov.result$summary)
 # Remove redundant suffix for strategy names
 # markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
 
-# ggplotly(markov.result$plot)
-print(markov.result$summary)
 # plot(markov.result$info$no_intervention$additional.info$incidence_hsil, type='l')
 # print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
 
@@ -48,8 +56,8 @@ cat('Done.\n')
 
 ### Parameter combination set
 
-arn.cost.values <- c(6, 25)
-discount.values <- c(0, .03, .05)
+arn.cost.values <- c(6)
+discount.values <- c(.03)
 delayed.cancer.cost.values <- c(3189)
 
 markov.results <- list()
@@ -60,11 +68,15 @@ for(discount in discount.values) {
       strat.ctx.i <- lapply(strat.ctx, function(ctx) {
         ctx[c('c_arn_kit')] <- arn.cost
         ctx['c_surgery_delayed'] <- delayed.cancer.cost
+        ctx['p_vaccination'] <- .6
         ctx
       })
 
-      strat.ctx.i <- refresh.context(c('c_arn_kit', 'c_surgery_delayed'), strat.ctx.i, excel.strata.df)
-
+      strat.ctx.i <- refresh.context(c('c_arn_kit', 'c_surgery_delayed', 'p_vaccination', 'p_cancer___hsil_annual'), strat.ctx.i, excel.strata.df)
+      
+      strat.ctx.i <- calib.vec.to.ctx(c(0.015027386, 0.009373967, 0.009985705, 0.013777898, 0.014339516, 0.015269283, 0.016174015, 0.017038861, 0.017901899, 0.018764908), strat.ctx = strat.ctx.i)
+      strat.ctx.i <- refresh.context('p_cancer___hsil_annual', strat.ctx.i, excel.strata.df)
+      
       cat('*** Simulating set with discount=', discount, ', ARN cost=', arn.cost, ' and delayed cancer cost=', delayed.cancer.cost, '\n', sep = '')
       x <- simulate('hiv_msm',
                           strategies$hiv_msm,

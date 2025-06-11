@@ -182,12 +182,18 @@ setup.markov <- function(trees, strat.ctx) {
 
     # Count HSIL for incidence purposes only if diagnosed by HRA (true positives)
     # Assuming undetected HSILs for no intervention strategy
+    # if (trees$hiv_msm$name == 'no_intervention') {
+    #   context$detection_new_hsil <- context$p_undetected_hsil
+    # } else {
+    #   context$detection_new_hsil <- .(sum(outcomes.undetected[c('semestral_followup_hsil_treatment', 'semestral_followup_hsil___hra'), 'prob'], na.rm=TRUE))
+    # }
+    # # context$detection_new_hsil <- 1 - (1 - context$detection_new_hsil)^2
+    
     if (trees$hiv_msm$name == 'no_intervention') {
       context$detection_new_hsil <- context$p_undetected_hsil
     } else {
-      context$detection_new_hsil <- .(sum(outcomes.undetected[c('semestral_followup_hsil_treatment', 'semestral_followup_hsil___hra'), 'prob'], na.rm=TRUE))
+      context$detection_new_hsil <- (1- context$p_coverage) * context$p_undetected_hsil + context$p_coverage * .(sum(outcomes.undetected[c('semestral_followup_hsil_treatment', 'semestral_followup_hsil___hra'), 'prob'], na.rm=TRUE))
     }
-    # context$detection_new_hsil <- 1 - (1 - context$detection_new_hsil)^2
 
     # Outcomes for semestral followup (no HSIL)
     outcomes.sem <- trees$semestral_followup$summarize(context, prevalence=0)
@@ -202,7 +208,7 @@ setup.markov <- function(trees, strat.ctx) {
     # Outcomes for semestral followup (HSIL)
     outcomes.sem.hsil <- trees$semestral_followup$summarize(context, prevalence=1)
     row.names(outcomes.sem.hsil) <- outcomes.sem.hsil$name
-
+    
     context$p_hsil_detected___semestral_followup_hsil <- .(sum(outcomes.sem.hsil[c('semestral_followup_hsil'), 'prob']))
     context$p_hsil_detected___semestral_followup_hsil_treatment <- .(sum(outcomes.sem.hsil[c('semestral_followup_hsil_treatment'), 'prob']))
     context$p_cancer___semestral_followup_hsil <- .(sum(outcomes.sem.hsil[c('surgery_cancer'), 'prob']))
@@ -227,7 +233,7 @@ setup.markov <- function(trees, strat.ctx) {
     tpMatrices[[stratum]] <- markov$evaluateTpMatrix(context)
   # print(tpMatrices[[stratum]])
   # print(stratum)
-
+    
     costs[[stratum]]['hiv_positive'] <- cost.hiv_msm
     costs[[stratum]]['undetected_hsil'] <- cost.undetected.hsil
     costs[[stratum]]['cancer_delayed'] <- context$c_surgery_delayed
@@ -276,6 +282,8 @@ calculate.iteration.measures <- function(trees, additional.info, year, iter, cur
   cancer.states <- c('cancer', 'cancer_delayed')
   n_new_cancers <- sum(cs.df[!names(cs.df) %in% 'cancer'] * tpMatrix$strategy[!names(cs.df) %in% 'cancer', 'cancer'])
   n_new_cancers_delayed <- sum(cs.df[!names(cs.df) %in% 'cancer_delayed'] * tpMatrix$other[!names(cs.df) %in% 'cancer_delayed', 'cancer_delayed'])
+  n_new_cancers_delayed <- n_new_cancers_delayed + sum(cs.df[!names(cs.df) %in% 'cancer_delayed'] * tpMatrix$no_intervention[!names(cs.df) %in% 'cancer_delayed', 'cancer_delayed'])
+
   incidence_cancer <- (n_new_cancers + n_new_cancers_delayed) / sum(cs.df[!names(cs.df) %in% c('death_cancer', 'death_other')])
 
   n_new_deaths_cancer <- sum(cs.df[!names(cs.df) %in% 'death_cancer'] * tpMatrix$other[!names(cs.df) %in% 'death_cancer', 'death_cancer'])
@@ -475,7 +483,7 @@ simulate.markov <- function(trees,
   strat.ctx <- setup.result$strat.ctx
   costs <- setup.result$costs
   # utilities <- setup.result$utilities
-
+  
   # ASSUMPTION: all node info is equal for all strata
   ctx <- get.context.stratum(strat.ctx, start.age+period, period)
   ctx <- lapply(ctx, function(e) e[1]) # Base values
@@ -493,6 +501,13 @@ simulate.markov <- function(trees,
   # costs['postmenopausal_bleeding'] <- bleeding.cost
   utilities <- sapply(names(strat.ctx), function(stratum) sapply(evaluated.markov$nodes, function(n)n$info$outcome), simplify=FALSE, USE.NAMES=TRUE)
 
+  if (trees$hiv_msm$name == 'no_intervention') {
+    initial.state['hiv_positive_no_intervention'] <- initial.state['hiv_positive']
+    initial.state['hiv_positive'] <- 0
+  } else {
+    initial.state['hiv_positive_no_intervention'] <- initial.state['hiv_positive'] * (1-strat.ctx[[1]]$p_coverage)
+    initial.state['hiv_positive'] <- initial.state['hiv_positive'] * strat.ctx[[1]]$p_coverage
+  }
   current.state <- t(initial.state)
   overall.cost <- 0
   overall.eff <- 0
@@ -547,12 +562,12 @@ simulate.markov <- function(trees,
   }
 
 states$all_hiv_positive <- apply(states, 1, function(r) sum(r[c('hiv_positive', 'hiv_positive_annual_followup1', 'hiv_positive_annual_followup2',
-                                                            'semestral_followup1_no_hsil', 'semestral_followup2_no_hsil',
+                                                            'hiv_positive_no_intervention', 'semestral_followup1_no_hsil', 'semestral_followup2_no_hsil',
                                                             'semestral_followup1_treatment_no_hsil', 'semestral_followup2_treatment_no_hsil')]))
 states$all_hsil <- apply(states, 1, function(r) sum(r[c('undetected_hsil', 'undetected_hsil_annual_followup1', 'undetected_hsil_annual_followup2',
-                                                        'semestral_followup1_hsil', 'semestral_followup2_hsil',
+                                                        'hiv_positive_no_intervention_hsil', 'semestral_followup1_hsil', 'semestral_followup2_hsil',
                                                         'semestral_followup1_treatment_hsil', 'semestral_followup2_treatment_hsil')]))
-
+states$all_cancer <- apply(states, 1, function(r) sum(r[c('cancer', 'cancer_delayed')]))
   states.death <- apply(states[startsWith(names(states), 'death_')], 1, sum)
   states.prevs <- as.data.frame(apply(states, 2, function(col) col/(1-states.death)))
   states.prevs <- states.prevs[!startsWith(names(states.prevs), 'death_')]
