@@ -14,6 +14,7 @@ set.seed(123)
 
 age.groups <- as.numeric(substr(names(strat.ctx), 2, 3))
 CALIB.START.AGE <- DEFAULT.START.AGE$hiv_msm - 5
+# CALIB.START.AGE <- DEFAULT.START.AGE$hiv_msm
 CALIB.MAX.AGE <- DEFAULT.MAX.AGE$hiv_msm
 CALIB.AGE.GROUPS <- names(strat.ctx)[age.groups >= CALIB.START.AGE & age.groups < CALIB.MAX.AGE]
 K <- length(CALIB.AGE.GROUPS)
@@ -85,7 +86,7 @@ calibration.error <- function(pars) {
     #
     # error <- sum((sim.inc.hsil - TARGET.INC.HSIL)^2)
     INCREASING.CONSTRAINT.PENALTY <- 1e7
-
+    
     ac.inc <- calculate.ac.incidence(result)
     hsil.inc <- calculate.hsil.incidence(result)
     error <- sum((((ac.inc - TARGET.INC.AC)/TARGET.INC.AC)^2)) +
@@ -98,6 +99,7 @@ calibration.error <- function(pars) {
     error <- 1e10
   }
   print(error)
+  
   if (error < best.solution.val) {
     best.solution <<- pars
     best.solution.val <<- error
@@ -122,7 +124,7 @@ calculate.ac.incidence <- function(par) {
 
   output <- output[3:nrow(output),]
   
-  agg.output <- output %>% group_by(age.group) %>% summarise_at(c('incidence_cancer'), mean) * 2 # Data is semestral, annual mean is 2 * semestral mean
+  agg.output <- output %>% group_by(age.group) %>% summarise_at(c('incidence_cancer'), mean)
   return(agg.output$incidence_cancer)
 }
 
@@ -230,6 +232,7 @@ calib.vec.to.ctx <- function(pars, strat.ctx) {
 
 ctx.to.calib.vec <- function(strat.ctx) {
   ix <- 1
+  
   pars <- numeric(0)
   for(ag in CALIB.AGE.GROUPS) {
     for(p in CALIB.PARAMS) {
@@ -274,7 +277,7 @@ plot.calibration.state <- function(pars) {
     geom_line() +
     ylab('HSIL incidence') +
     ggtitle(paste0('Mean HSIL incidence: ', mean(hsil.inc))) +
-    scale_x_continuous(breaks=1:K, labels=paste0(seq(DEFAULT.START.AGE$hiv_msm-5,DEFAULT.MAX.AGE$hiv_msm,5), '-', seq(DEFAULT.START.AGE$hiv_msm-1,DEFAULT.MAX.AGE$hiv_msm+4,5))) +
+    scale_x_continuous(breaks=1:K, labels=paste0(seq(CALIB.START.AGE,CALIB.MAX.AGE,5), '-', seq(CALIB.START.AGE+4,CALIB.MAX.AGE+4,5))) +
     theme_minimal() +
     ylim(0, max(mean(hsil.inc), TARGET.INC.HSIL)) +
     theme(panel.grid.minor=element_blank())
@@ -312,39 +315,41 @@ plot.calibration.state <- function(pars) {
 # 0.00858998,
 # 0.00894313))$summary
 
-best.solution <- initial.guess
-best.solution.val <- 1e20
-best.solution.val <- calibration.error(initial.guess)
-
-plot.calibration.state(sapply(strat.ctx, function(ctx) ctx$p_cancer___hsil_annual)[2:11])$summary
+plot.calibration.state(sapply(strat.ctx, function(ctx) ctx$p_cancer___hsil_annual)[names(strat.ctx) %in% CALIB.AGE.GROUPS])$summary
 
 initial.guess <- ctx.to.calib.vec(strat.ctx)
+# initial.guess <- c(0.009373967, 0.009985705, 0.013777898, 0.014339516, 0.015269283, 0.016174015, 0.017038861, 0.017901899, 0.018764908)
 
 # initial.guess[seq(1,24,3)] <- rev(initial.guess[seq(1,24,3)])
 
 ### Calibration tests
 
+best.solution <- initial.guess
+best.solution.val <- 1e30
+best.solution.val <- calibration.error(initial.guess)
 
-eval.count <- 0
-start.time <- Sys.time()
-res <- optim(initial.guess,
-             calibration.error,
-             method='L-BFGS-B',
-             lower=0,
-             upper=pmin(1, initial.guess*2),
-             control=list(parscale=rep(1e-1, length(initial.guess))))
-
+# eval.count <- 0
+# start.time <- Sys.time()
+# res <- optim(initial.guess,
+#              calibration.error,
+#              method='L-BFGS-B',
+#              lower=0,
+#              upper=pmin(1, initial.guess*2),
+#              control=list(parscale=rep(1e-1, length(initial.guess))))
+# 
 plot.calibration.state(initial.guess)$summary
 
-res <- cma_es(initial.guess,
-             calibration.error,
-             lower=initial.guess*.5,
-             upper=pmin(1, initial.guess*3),
-             control=list(parscale=rep(1e-1, length(initial.guess))))
+# plot.calibration.state(c(0.00333, 0.002007141, 0.002775580, 0.002867903, 0.003053857, 0.003214803, 0.003377772, 0.003530380, 0.003682982) * 1.2)$summary
+
+# res <- cma_es(initial.guess,
+#              calibration.error,
+#              lower=0,
+#              upper=pmin(1, initial.guess/5),
+#              control=list(parscale=rep(1e-1, length(initial.guess))))
 
 
-cat('Elapsed time: ', as.numeric(difftime(Sys.time(), start.time, units='min')), ' min')
-cat('Evaluations: ', eval.count)
+# cat('Elapsed time: ', as.numeric(difftime(Sys.time(), start.time, units='min')), ' min')
+# cat('Evaluations: ', eval.count)
 
 # CALIBRATED VALUES FOR NON-CONSTANT HSIL INCIDENCE
 # calibrated.params <- c(
@@ -354,8 +359,8 @@ cat('Evaluations: ', eval.count)
 # calibrated.params <- res$par
 
 uncalibrated.params <- c(
-  sapply(strat.ctx[CALIB.AGE.GROUPS], function(ctx) ctx$p_cancer___hsil_annual)
-  # rep(1/131, 8)
+  # sapply(strat.ctx[CALIB.AGE.GROUPS], function(ctx) ctx$p_cancer___hsil_annual)
+  rep(1/131, 10)
   # ,
   # sapply(strat.ctx[CALIB.AGE.GROUPS], function(ctx) ctx$p_hsil_regression_annual)
   # ,
@@ -375,93 +380,93 @@ calibrated.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
 initial.output.hsil <- calculate.hsil.incidence(uncalibrated.params)
 calibrated.output.hsil <- calculate.hsil.incidence(ctx.to.calib.vec(strat.ctx))
 
-# N <- length(initial.output)
-# df <- data.frame(x=c(
-#                      1:N,
-#                      1:N,
-#                      rep(1:N, 2),
-#                      rep(1:N, 2),
-#                      NULL
-#                      ),
-#                  error=c(
-#                          TARGET.INC.AC,
-#                          TARGET.INC.HSIL,
-#                          initial.output, calibrated.output,
-#                          initial.output.hsil, calibrated.output.hsil,
-#                          NULL
-#                          ) * 1e5,
-#                  type=c(
-#                         rep('target', N),
-#                         rep('target', N),
-#                         rep('initial', N), rep('calibrated', N),
-#                         rep('initial', N), rep('calibrated', N),
-#                         NULL
-#                         ),
-#                  measure=c(
-#                            rep('ac', N),
-#                            rep('hsil', N),
-#                            rep('ac', N), rep('ac', N),
-#                            rep('hsil', N), rep('hsil', N),
-#                            NULL
-#                            ))
-# plt <- ggplot(df, aes(x=x, y=error, color=type, linetype=measure)) +
-#   geom_line() +
-#   scale_x_continuous(breaks=1:8, labels=paste0(40+((1:8)-1)*5, '-', 40+((2:9)-1)*5)) +
-#   # coord_cartesian(ylim=c(0, 0.0012)) +
-#   scale_color_manual(name='',
-#                      breaks=c('target', 'initial', 'calibrated'),
-#                      values=c('black', 'red', 'blue'),
-#                      labels=c('Target (AC incidence)', 'Initial', 'Calibrated')) +
-#   scale_linetype_manual(name='',
-#                         breaks=c('ac', 'hsil'),
-#                         values=c('solid', 'dashed'),
-#                         labels=c('AC incidence', 'HSIL incidence')) +
-#   xlab('Age group') +
-#   ylab('Incidence (per 100,000)') +
-#   theme_minimal() +
-#   theme(panel.grid = element_blank())
-# print(plt)
-# ggplotly(plt)
-# 
-# x <- ctx.to.calib.vec(strat.ctx)
-# print(paste0('Mean HSIL incidence: ', mean(calculate.hsil.incidence(x))))
+N <- length(initial.output)
+df <- data.frame(x=c(
+                     1:N,
+                     1:N,
+                     rep(1:N, 2),
+                     rep(1:N, 2),
+                     NULL
+                     ),
+                 error=c(
+                         TARGET.INC.AC,
+                         TARGET.INC.HSIL,
+                         initial.output, calibrated.output,
+                         initial.output.hsil, calibrated.output.hsil,
+                         NULL
+                         ) * 1e5,
+                 type=c(
+                        rep('target', N),
+                        rep('target', N),
+                        rep('initial', N), rep('calibrated', N),
+                        rep('initial', N), rep('calibrated', N),
+                        NULL
+                        ),
+                 measure=c(
+                           rep('ac', N),
+                           rep('hsil', N),
+                           rep('ac', N), rep('ac', N),
+                           rep('hsil', N), rep('hsil', N),
+                           NULL
+                           ))
+plt <- ggplot(df, aes(x=x, y=error, color=type, linetype=measure)) +
+  geom_line() +
+  scale_x_continuous(breaks=1:8, labels=paste0(40+((1:8)-1)*5, '-', 40+((2:9)-1)*5)) +
+  # coord_cartesian(ylim=c(0, 0.0012)) +
+  scale_color_manual(name='',
+                     breaks=c('target', 'initial', 'calibrated'),
+                     values=c('black', 'red', 'blue'),
+                     labels=c('Target (AC incidence)', 'Initial', 'Calibrated')) +
+  scale_linetype_manual(name='',
+                        breaks=c('ac', 'hsil'),
+                        values=c('solid', 'dashed'),
+                        labels=c('AC incidence', 'HSIL incidence')) +
+  xlab('Age group') +
+  ylab('Incidence (per 100,000)') +
+  theme_minimal() +
+  theme(panel.grid = element_blank())
+print(plt)
+ggplotly(plt)
+
+x <- ctx.to.calib.vec(strat.ctx)
+print(paste0('Mean HSIL incidence: ', mean(calculate.hsil.incidence(x))))
 
 
 
 
-# initial.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
-# # print(initial.output)
-# # initial.output.hsils <- calculate.hsil.prevalence(ctx.to.calib.vec(strat.ctx))
-# N <- length(initial.output)
-# df <- data.frame(x=rep(1:N,2),
-#                  incidence=100000*c(TARGET.INC.AC, initial.output),
-#                  type=c(rep('target', N), rep('initial', N)))
-# plt <- ggplot(df, aes(x=x, y=incidence, color=type)) +
-#   geom_line() +
-#   scale_x_continuous(breaks=1:8, labels=paste0(40+((1:8)-1)*5, '-', 40+((2:9)-1)*5-1)) +
-#   # coord_cartesian(ylim=c(0, 0.0012)) +
-#   scale_color_manual(name='AC incidence',
-#                      breaks=c('target', 'initial'),
-#                      values=c('black', 'red')) +
-#   theme_minimal()
-# ggplotly(plt)
+initial.output <- calculate.ac.incidence(ctx.to.calib.vec(strat.ctx))
+# print(initial.output)
+# initial.output.hsils <- calculate.hsil.prevalence(ctx.to.calib.vec(strat.ctx))
+N <- length(initial.output)
+df <- data.frame(x=rep(1:N,2),
+                 incidence=100000*c(TARGET.INC.AC, initial.output),
+                 type=c(rep('target', N), rep('initial', N)))
+plt <- ggplot(df, aes(x=x, y=incidence, color=type)) +
+  geom_line() +
+  scale_x_continuous(breaks=1:8, labels=paste0(40+((1:8)-1)*5, '-', 40+((2:9)-1)*5-1)) +
+  # coord_cartesian(ylim=c(0, 0.0012)) +
+  scale_color_manual(name='AC incidence',
+                     breaks=c('target', 'initial'),
+                     values=c('black', 'red')) +
+  theme_minimal()
+ggplotly(plt)
 
 
-# slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
-# 
-# plots <- plot.calibration.state(sapply(strat.ctx, function(ctx) ctx$p_cancer___hsil_annual)[2:11])
-# 
-# slides <- slides %>%
-#   add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
-#   ph_with(rvg::dml(ggobj=plots$params + 
-#                      ylab('Calibrated annual probability of cancer')), ph_location_type('body', id=1))
-# 
-# slides <- slides %>%
-#   add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
-#   ph_with(rvg::dml(ggobj=plots$hsil.inc), ph_location_type('body', id=1))
-# 
-# slides <- slides %>%
-#   add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
-#   ph_with(rvg::dml(ggobj=plots$ac.inc), ph_location_type('body', id=1))
-# 
-# slides %>% print(paste0('output/calibration.pptx'))
+slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
+
+plots <- plot.calibration.state(sapply(strat.ctx, function(ctx) ctx$p_cancer___hsil_annual)[2:11])
+
+slides <- slides %>%
+  add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+  ph_with(rvg::dml(ggobj=plots$params +
+                     ylab('Calibrated annual probability of cancer')), ph_location_type('body', id=1))
+
+slides <- slides %>%
+  add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+  ph_with(rvg::dml(ggobj=plots$hsil.inc), ph_location_type('body', id=1))
+
+slides <- slides %>%
+  add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
+  ph_with(rvg::dml(ggobj=plots$ac.inc), ph_location_type('body', id=1))
+
+slides %>% print(paste0('output/calibration.pptx'))
