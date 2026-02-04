@@ -6,32 +6,41 @@ source('markov.R')
 cat('Running markov model...\n')
 markov.outputs <- list()
 
-# strat.ctx <- calib.vec.to.ctx(c(0.015027386, 0.009373967, 0.009985705, 0.013777898, 0.014339516, 0.015269283, 0.016174015, 0.017038861, 0.017901899, 0.018764908), strat.ctx = strat.ctx)
+# strat.ctx <- calib.vec.to.ctx(c(0.015027386, 0.009373967, 0.009985705, 0.013777898, 0.014339516, 0.015269283, 0.016174015, 0.017038861, 0.017901899, 0.018764908)/4.1, strat.ctx = strat.ctx)  # Calibrated starting at 30
+# strat.ctx <- calib.vec.to.ctx(c(0.007968000, 0.007968000, 0.004845938, 0.006711792, 0.006882968, 0.007305256, 0.007691528, 0.008065852, 0.008448912, 0.008839156), strat.ctx = strat.ctx)  # Calibrated starting at 35
 # strat.ctx <- refresh.context('p_cancer___hsil_annual', strat.ctx, excel.strata.df)
 
 # strat.ctx <- lapply(strat.ctx, function(ctx) {ctx$p_arnmhr_p___no_hsil <- 0; ctx})
 # strat.ctx <- refresh.context('p_arnmhr_p___no_hsil', strat.ctx, excel.strata.df)
 
-# strat.ctx <- lapply(strat.ctx, function(ctx) {ctx$p_vaccination <- .2744; ctx})
-# strat.ctx <- refresh.context('p_vaccination', strat.ctx, excel.strata.df)
+# strat.ctx <- lapply(strat.ctx, function(ctx) {ctx$p_cancer___hsil_annual <- ctx$p_cancer___hsil_annual * 2; ctx})
+# strat.ctx <- refresh.context('p_cancer___hsil_annual', strat.ctx, excel.strata.df)
+
 
 initial.state <- sapply(markov$nodes,
                         function(n) if (n$name=='hiv_positive') 1 else 0)
-markov.result <- simulate('hiv_msm',
-                           # strategies$hiv_msm,
-                          # strategies$hiv_msm[c('no_intervention', 'conventional')],
-                          strategies$hiv_msm[c('conventional_t_tca', 'arnme6e7_hpvhr_t_tca')],
-                          # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc')],
-                          # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'conventional_t_tca')],
-                           markov,
-                           strat.ctx,
-                           initial.state,
-                           discount.rate=.03)
+# markov.result <- simulate('hiv_msm',
+#                           #  strategies$hiv_msm,
+#                            strategies$hiv_msm[c('conventional_t_tca','conventional_hpvhrla_t_tca')],
+#                           # strategies$hiv_msm[c('no_intervention')],
+#                           # strategies$hiv_msm['conventional'],
+#                           # strategies$hiv_msm[c('conventional_t_tca', 'arnme6e7_hpvhr_t_tca')],
+#                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc')],
+#                           # strategies$hiv_msm[c('arnme6e7_hpvhr_t_tca', 'conventional_t_tca')],
+#                           # strategies$hiv_msm[c('conventional_hpvhrhc_t_tca', 'arnme6e7_hpvhr_t_tca')],
+#                            markov,
+#                            strat.ctx,
+#                            initial.state,
+#                            discount.rate=.03)
 
-print(markov.result$summary)
 # Remove redundant suffix for strategy names
 # markov.result$summary$strategy <- gsub('(.*?)-(.*)', '\\1', markov.result$summary$strategy)
+# row.names(markov.result$summary) <- markov.result$summary$strategy
 
+#strategy.order <- c('arnme6e7_hpv16_t_tca', 'arnme6e7_hpv16_t_irc', 'arnme6e7_hpv16', 'arnme6e7_hpv161845_t_tca', 'arnme6e7_hpv161845_t_irc', 'arnme6e7_hpv161845', 'arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc', 'arnme6e7_hpvhr', 'ascus_lsil_diff_arnme6e7_hpv16_t_tca', 'ascus_lsil_diff_arnme6e7_hpv16_t_irc', 'ascus_lsil_diff_arnme6e7_hpv16', 'ascus_lsil_diff_arnme6e7_hpv161845_t_tca', 'ascus_lsil_diff_arnme6e7_hpv161845_t_irc', 'ascus_lsil_diff_arnme6e7_hpv161845', 'ascus_lsil_diff_arnme6e7_hpvhr_t_tca', 'ascus_lsil_diff_arnme6e7_hpvhr_t_irc', 'ascus_lsil_diff_arnme6e7_hpvhr', 'ascus_lsil_diff_hpv1618la_t_tca', 'ascus_lsil_diff_hpv1618la_t_irc', 'ascus_lsil_diff_hpv1618la', 'ascus_lsil_diff_hpv16la_t_tca', 'ascus_lsil_diff_hpv16la_t_irc', 'ascus_lsil_diff_hpv16la', 'ascus_lsil_diff_hpvhrhc_t_tca', 'ascus_lsil_diff_hpvhrhc_t_irc', 'ascus_lsil_diff_hpvhrhc', 'ascus_lsil_diff_hpvhrla_t_tca', 'ascus_lsil_diff_hpvhrla_t_irc', 'ascus_lsil_diff_hpvhrla', 'conventional_hpv1618la_t_tca', 'conventional_hpv1618la_t_irc', 'conventional_hpv1618la', 'conventional_hpv16la_t_tca', 'conventional_hpv16la_t_irc', 'conventional_hpv16la', 'conventional_hpvhrhc_t_tca', 'conventional_hpvhrhc_t_irc', 'conventional_hpvhrhc', 'conventional_hpvhrla_t_tca', 'conventional_hpvhrla_t_irc', 'conventional_hpvhrla', 'conventional_t_tca', 'conventional_t_irc', 'conventional', 'no_intervention')
+# View(markov.result$summary)
+#write.xlsx(markov.result$summary[strategy.order,], 'output/results/anus_ce_all_6_disc_5.xlsx')
+# print(ggplotly(markov.result$plot)
 # plot(markov.result$info$no_intervention$additional.info$incidence_hsil, type='l')
 # print(ggplotly(markov.result$plot + theme(legend.position = 'none')))
 
@@ -56,7 +65,7 @@ cat('Done.\n')
 
 ### Parameter combination set
 
-arn.cost.values <- c(6)
+arn.cost.values <- c(5.33)
 discount.values <- c(.03)
 delayed.cancer.cost.values <- c(3189)
 
@@ -68,15 +77,20 @@ for(discount in discount.values) {
       strat.ctx.i <- lapply(strat.ctx, function(ctx) {
         ctx[c('c_arn_kit')] <- arn.cost
         ctx['c_surgery_delayed'] <- delayed.cancer.cost
-        ctx['p_vaccination'] <- .6
+        ctx['p_vaccination'] <- 0
         ctx
       })
 
-      strat.ctx.i <- refresh.context(c('c_arn_kit', 'c_surgery_delayed', 'p_vaccination', 'p_cancer___hsil_annual'), strat.ctx.i, excel.strata.df)
+      # strat.ctx <- lapply(strat.ctx, function(ctx) {ctx$p_cancer___hsil_annual <- ctx$p_cancer___hsil_annual * 2; ctx})
+      # strat.ctx <- refresh.context('p_cancer___hsil_annual', strat.ctx, excel.strata.df)
+      # strat.ctx.i <- refresh.context(c('c_arn_kit', 'c_surgery_delayed', 'p_vaccination', 'p_cancer___hsil_annual'), strat.ctx.i, excel.strata.df)
       
-      strat.ctx.i <- calib.vec.to.ctx(c(0.015027386, 0.009373967, 0.009985705, 0.013777898, 0.014339516, 0.015269283, 0.016174015, 0.017038861, 0.017901899, 0.018764908), strat.ctx = strat.ctx.i)
-      strat.ctx.i <- refresh.context('p_cancer___hsil_annual', strat.ctx.i, excel.strata.df)
-      
+      # strat.ctx.i <- calib.vec.to.ctx(c(0.015027386, 0.009373967, 0.009985705, 0.013777898, 0.014339516, 0.015269283, 0.016174015, 0.017038861, 0.017901899, 0.018764908), strat.ctx = strat.ctx.i)
+      # strat.ctx.i <- refresh.context('p_cancer___hsil_annual', strat.ctx.i, excel.strata.df)
+
+      # strat.ctx.i <- lapply(strat.ctx.i, function(ctx) {ctx$p_cancer___hsil_annual <- ctx$p_cancer___hsil_annual * 2; ctx})
+      # strat.ctx.i <- refresh.context('p_cancer___hsil_annual', strat.ctx.i, excel.strata.df)
+
       cat('*** Simulating set with discount=', discount, ', ARN cost=', arn.cost, ' and delayed cancer cost=', delayed.cancer.cost, '\n', sep = '')
       x <- simulate('hiv_msm',
                           strategies$hiv_msm,
@@ -123,8 +137,34 @@ summary.df[,grepl('^(n_|incidence_)', names(summary.df))] <- summary.df[,grepl('
 
 strategies.order <- c('arnme6e7_hpv16_t_tca', 'arnme6e7_hpv16_t_irc', 'arnme6e7_hpv16', 'arnme6e7_hpv161845_t_tca', 'arnme6e7_hpv161845_t_irc', 'arnme6e7_hpv161845', 'arnme6e7_hpvhr_t_tca', 'arnme6e7_hpvhr_t_irc', 'arnme6e7_hpvhr', 'ascus_lsil_diff_arnme6e7_hpv16_t_tca', 'ascus_lsil_diff_arnme6e7_hpv16_t_irc', 'ascus_lsil_diff_arnme6e7_hpv16', 'ascus_lsil_diff_arnme6e7_hpv161845_t_tca', 'ascus_lsil_diff_arnme6e7_hpv161845_t_irc', 'ascus_lsil_diff_arnme6e7_hpv161845', 'ascus_lsil_diff_arnme6e7_hpvhr_t_tca', 'ascus_lsil_diff_arnme6e7_hpvhr_t_irc', 'ascus_lsil_diff_arnme6e7_hpvhr', 'ascus_lsil_diff_hpv1618la_t_tca', 'ascus_lsil_diff_hpv1618la_t_irc', 'ascus_lsil_diff_hpv1618la', 'ascus_lsil_diff_hpv16la_t_tca', 'ascus_lsil_diff_hpv16la_t_irc', 'ascus_lsil_diff_hpv16la', 'ascus_lsil_diff_hpvhrhc_t_tca', 'ascus_lsil_diff_hpvhrhc_t_irc', 'ascus_lsil_diff_hpvhrhc', 'ascus_lsil_diff_hpvhrla_t_tca', 'ascus_lsil_diff_hpvhrla_t_irc', 'ascus_lsil_diff_hpvhrla', 'conventional_hpv1618la_t_tca', 'conventional_hpv1618la_t_irc', 'conventional_hpv1618la', 'conventional_hpv16la_t_tca', 'conventional_hpv16la_t_irc', 'conventional_hpv16la', 'conventional_hpvhrhc_t_tca', 'conventional_hpvhrhc_t_irc', 'conventional_hpvhrhc', 'conventional_hpvhrla_t_tca', 'conventional_hpvhrla_t_irc', 'conventional_hpvhrla', 'conventional_t_tca', 'conventional_t_irc', 'conventional', 'no_intervention')
 summary.df <- summary.df[match(strategies.order, summary.df$strategy),]
-write.xlsx(summary.df, 'output/results/summary_anus_long.xlsx')
+
+
+
+unlist.strat.ctx <- unlist(strat.ctx)
+date.suffix <- format(Sys.Date(), '%Y%m%d')
+
+sheet.data <- list(
+  'Summary'=summary.df,
+  'Base parameters'=data.frame(
+    parameter=c(names(unlist.strat.ctx)), 
+    base.value=c(unlist.strat.ctx)
+  )
+)
+openxlsx::write.xlsx(sheet.data, 
+                      paste0('output/results/summary_anus_long__', date.suffix, '.xlsx'), 
+                      rowNames = F, 
+                      colWidths='auto')
+
+
+
+
+# write.xlsx(summary.df, 'output/results/summary_anus_long__', date.suffix, '.xlsx')
 # summary.df <- read.xlsx('output/results/summary_anus_long.xlsx', sheetIndex=1)
+
+
+
+
+
 
 summary.df$strat.treatment <- 'followup'
 summary.df[endsWith(summary.df$strategy, '_t_tca'), 'strat.treatment'] <- 'TCA'
@@ -189,4 +229,19 @@ for(var.name in names(summary.df)) {
 }
 
 # View(new.summary.df)
-write.xlsx(new.summary.df, 'output/results/summary_anus_wide.xlsx')
+# write.xlsx(new.summary.df, 'output/results/summary_anus_wide.xlsx')
+
+unlist.strat.ctx <- unlist(strat.ctx)
+date.suffix <- format(Sys.Date(), '%Y%m%d')
+
+sheet.data <- list(
+  'Summary'=new.summary.df,
+  'Base parameters'=data.frame(
+    parameter=c(names(unlist.strat.ctx)), 
+    base.value=c(unlist.strat.ctx)
+  )
+)
+openxlsx::write.xlsx(sheet.data, 
+                      paste0('output/results/summary_anus_wide__', date.suffix, '.xlsx'), 
+                      rowNames = F, 
+                      colWidths='auto')

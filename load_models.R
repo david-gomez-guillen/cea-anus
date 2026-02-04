@@ -80,8 +80,8 @@ if (file.exists(strat.ctx.hash.file) && readLines(strat.ctx.hash.file) == md5sum
   excel.strata.df.full <- list()
   .strata <- names(xlsx::getSheets(xlsx::loadWorkbook(strat.ctx.path)))
   for(stratum in .strata) {
-    excel.strata.df[[stratum]] <- read.xlsx(strat.ctx.path, sheetName = stratum, keepFormulas = T)[,c(1,2)]
-    excel.strata.df.full[[stratum]] <- read.xlsx(strat.ctx.path, sheetName = stratum, keepFormulas = T)
+    excel.strata.df[[stratum]] <- xlsx::read.xlsx(strat.ctx.path, sheetName = stratum, keepFormulas = T)[,c(1,2)]
+    excel.strata.df.full[[stratum]] <- xlsx::read.xlsx(strat.ctx.path, sheetName = stratum, keepFormulas = T)
   }
   strat.ctx <- refresh.context(c(), full.strat.ctx, excel.strata.df, context.setup)
 

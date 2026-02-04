@@ -153,6 +153,7 @@ dsa.n <- function(pars,
 
   plt <- NULL
   plt2 <- NULL
+  
   if (length(pars) == 1) {
     param.display.names <- lapply(full.strat.metadata[[1]], function(r) r$display_name)
     ret <- plot.tornado(results, population, reference=reference, param.display.names = param.display.names, WTP = 25000)
@@ -277,11 +278,14 @@ dsa.1 <- function(pars,
       iter.result.base <- cbind(data.frame(
         iter=-1,
         strategy=stg,
+        param=NA,
+        param.value=NA,
         C=base.result[base.result$strategy == stg,]$C,
         IC=IC,
         E=base.result[base.result$strategy == stg,]$E,
         IE=IE,
         ICER=IC/IE,
+        NHB=IE-IC/25000,
         n_cancers=mean(base.output$info[[stg]]$additional.info$n_cancers),
         n_new_deaths_cancer=mean(base.output$info[[stg]]$additional.info$n_new_deaths_cancer),
         n_new_detected_false_hsils=mean(base.output$info[[stg]]$additional.info$n_new_detected_false_hsils),
@@ -298,17 +302,21 @@ dsa.1 <- function(pars,
         n_treatment_hsil=mean(base.output$info[[stg]]$additional.info$n_treatment_hsil)
       ), named.strata.ctx)
       iter.result.base$param <- NA
+      iter.result.base$param.value <- NA
       results <- rbind(results, iter.result.base)
     }
   } else {
     iter.result.base <- cbind(data.frame(
       iter=-1,
       strategy=strategy,
+      param=NA,
+      param.value=NA,
       C=base.strat$C,
       IC=IC,
       E=base.strat$E,
       IE=IE,
       ICER=IC/IE,
+      NHB=IE-IC/25000,
       n_cancers=mean(base.output$info[[strategy]]$additional.info$n_cancers),
       n_new_deaths_cancer=mean(base.output$info[[strategy]]$additional.info$n_new_deaths_cancer),
       n_new_detected_false_hsils=mean(base.output$info[[strategy]]$additional.info$n_new_detected_false_hsils),
@@ -325,6 +333,7 @@ dsa.1 <- function(pars,
       n_treatment_hsil=mean(base.output$info[[strategy]]$additional.info$n_treatment_hsil)
     ), named.strata.ctx)
     iter.result.base$param <- NA
+    iter.result.base$param.value <- NA
     results <- rbind(results, iter.result.base)
   }
 
@@ -519,7 +528,7 @@ dsa.1 <- function(pars,
                                  })
       named.strata.ctx <- lapply(named.strata.ctx, function(x) lapply(x, function(y)y[1]))  # FIX: Why is this necessary?
       named.strata.ctx <- Reduce(function(x,y) merge(x, y, all=TRUE), named.strata.ctx)
-      iter.result <- cbind(data.frame(
+      new.result <- data.frame(
         iter=i,
         strategy=strategy,
         C=dsa.strat$C,
@@ -527,6 +536,7 @@ dsa.1 <- function(pars,
         E=dsa.strat$E,
         IE=IE,
         ICER=IC/IE,
+        NHB=IE-IC/25000,
         n_cancers=mean(dsa.output$info[[strategy]]$additional.info$n_cancers),
         n_new_deaths_cancer=mean(dsa.output$info[[strategy]]$additional.info$n_new_deaths_cancer),
         n_new_detected_false_hsils=mean(dsa.output$info[[strategy]]$additional.info$n_new_detected_false_hsils),
@@ -541,7 +551,17 @@ dsa.1 <- function(pars,
         n_hra_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_hra_hsil),
         n_treatment_no_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_treatment_no_hsil),
         n_treatment_hsil=mean(dsa.output$info[[strategy]]$additional.info$n_treatment_hsil)
-      ), named.strata.ctx)
+      )
+      if (length(pars) == 1) {
+        new.result$param <- pars
+        new.result$param.value <- dsa.strat.ctx[[1]][[pars]]  # Showing only the first stratum
+        
+        first.columns <- c('iter', 'strategy', 'param', 'param.value', 'C', 'IC', 'E', 'IE', 'ICER', 'NHB')
+        last.columns <- names(new.result)
+        last.columns <- last.columns[!last.columns %in% first.columns]
+        new.result <- new.result[c(first.columns, last.columns)]
+      }
+      iter.result <- cbind(new.result, named.strata.ctx)
     }
     return(iter.result)
   })

@@ -25,20 +25,14 @@ EXCLUDED.PARAMS <- c(EXCLUDED.PARAMS,
 pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
-args <- commandArgs(trailingOnly=TRUE)
-if (length(args) == 0) {
-  n.cores <- N.CORES
-} else {
-  n.cores <- as.numeric(args[1])
-}
 
 GET.SD.FUNC <- function(divisor) {
   function(p.name, value) value/divisor
 }
 
 SD.ESTIMATE.FUNCTIONS <- list(
-  sd_10=GET.SD.FUNC(10)
-  ,
+  # sd_10=GET.SD.FUNC(10)
+  # ,
   sd_5=GET.SD.FUNC(5)
   # ,
   # sd_2=GET.SD.FUNC(2)
@@ -59,13 +53,13 @@ SD.ESTIMATE.FUNCTIONS <- list(
 )
 
 SIMULATION.OPTIONS <- list(
-  followup=list(
-    population='hiv_msm',
-    reference='conventional_t_tca',
-    strategy='arnme6e7_hpvhr_t_tca',
-    reference.name='Conventional (TCA)',
-    strategy.name='ARNmE6/E7 HPV-HR (TCA)'
-  )
+  # followup=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   reference.name='Conventional (TCA)',
+  #   strategy.name='ARNmE6/E7 HPV-HR (TCA)'
+  # )
   # ,
   # treatment=list(
   #   population='hiv_msm',
@@ -74,6 +68,14 @@ SIMULATION.OPTIONS <- list(
   #   reference.name='Conventional (TCA)',
   #   strategy.name='ASCUS/LSIL diff - ARNME6E7 16 (TCA)'
   # )
+  # ,
+  cito_vs_cotest_pcr=list(
+    population='hiv_msm',
+    reference='conventional_t_tca',
+    strategy='conventional_hpvhrla_t_tca',
+    reference.name='Cytology + TCA',
+    strategy.name='Co-testing DNA-PCR + TCA'
+  )
 )
 
 psa.pars <- list(
@@ -86,7 +88,7 @@ psa.pars <- list(
   # probs=pars[startsWith(pars, 'p_') |
   #              startsWith(pars, 'survival_')]
   # ,
-  hsil_regression=c('p_hsil_regression_annual')
+  test=c('rate_death_other_annual')
 )
 
 
@@ -98,11 +100,11 @@ RESUME.PAR <- ''
 trees.all <- trees
 
 if (DEBUG) {
-  n.cores <- 1
+  N.CORES <- 1
   cl <- NULL
 } else {
   out.file <- ifelse(Sys.getenv('SLURM_JOB_ID') == '', 'workers.out', paste0('workers-', Sys.getenv('SLURM_JOB_ID'), '.out'))
-  cl <- makeCluster(n.cores, outfile=out.file)
+  cl <- makeCluster(N.CORES, outfile=out.file)
   on.exit({
     stopCluster(cl)
   }, add=TRUE)
@@ -141,7 +143,6 @@ for(param.set.name in names(psa.pars)) {
     
     for(sd.estimate.name in names(SD.ESTIMATE.FUNCTIONS)) {
       sd.estimate.func <- SD.ESTIMATE.FUNCTIONS[[sd.estimate.name]]
-      browser()
       for(par in param.set) {
         filename.preffix <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', par, '__')
         results <- psa.n(par,
@@ -153,7 +154,7 @@ for(param.set.name in names(psa.pars)) {
                          excel.file = 'params/context.xlsx',
                          sd.estimate.func=sd.estimate.func,
                          context.setup.func=context.setup,
-                         n.cores = n.cores,
+                         n.cores = N.CORES,
                          cluster = cl,
                          # n.cores = 1,
                          # cluster = NULL,
@@ -188,7 +189,7 @@ for(param.set.name in names(psa.pars)) {
         # }
         # results <- generate.psa.summary(df.results, options$strategy, options$population, options$reference, strat.ctx, param.set, jitter.x=JITTER.X, jitter.y=JITTER.Y)
 
-        filename <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', par)
+        filename <- paste0(options$strategy, '__', option.name, '__sd_', sd.estimate.name, '__par_', par)
         store.results.psa(results, 'univariate', options$population, options$strategy.name, filename)
       }
       

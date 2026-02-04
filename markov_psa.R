@@ -6,12 +6,12 @@ library(doParallel)
 library(pbapply)
 library(CEAModel)
 library(scales)
+library(officer)
 
 source('markov.R')
 source('distributions.R')
 source('excel_params.R')
 
-PSA.SEED <- 1234
 N.ITERS.DEFAULT <- 1000
 DISCOUNT.RATE.DEFAULT <- .05
 WTP.THRESHOLDS <- c(5000, 10000, 20000, 50000)
@@ -60,6 +60,7 @@ psa.1 <- function(pars,
       library(ggplot2)
       library(plotly)
       library(pbapply)
+      library(gtools)
     })
   } else {
     cl <- cluster
@@ -110,7 +111,27 @@ psa.n <- function(pars,
                   seed=0,
                   jitter.x=.05,
                   jitter.y=.05) {
-  if (!all(pars %in% names(strat.ctx[[1]])))
+
+  actual.pars <- c()
+  if (is.list(pars)) {
+    v.pars <- c()
+    for(p in pars) {
+      if (is.list(p)) {
+        # So far, assuming multinomial distribution -> all parameters inside the list
+        new.p <- paste0('#dirichlet###', paste0(unlist(p), collapse='###'))
+        actual.pars <- c(actual.pars, unlist(p))
+      } else {
+        new.p <- p
+        actual.pars <- c(actual.pars, p)
+      }
+      v.pars <- c(v.pars, new.p)
+    }
+    pars <- v.pars
+  } else {
+    actual.pars <- pars
+  }
+
+  if (!all(actual.pars %in% names(strat.ctx[[1]])))
     stop(paste0("Some parameters don't exist in the context: ", 
                 paste0('"', pars[!pars %in% names(strat.ctx[[1]])], '"', collapse = ', ')))
   pars <- pars[order(pars)]
@@ -141,6 +162,7 @@ psa.n <- function(pars,
       library(ggplot2)
       library(plotly)
       library(pbapply)
+      library(gtools)
     })
   } else {
     cl <- cluster
@@ -211,6 +233,7 @@ psa.n <- function(pars,
            message(e$message)
            NULL
          })
+         
       if (is.null(psa.result)) {
         message('Simulation failed while sampling ', paste0(pars, collapse=', '), '. Resampling...')
       }
@@ -219,7 +242,6 @@ psa.n <- function(pars,
     if (is.null(psa.result)) {
       stop('Simulation failed ', MAX.SAMPLING.ATTEMPTS, ' times in a row while sampling ', paste0(pars, collapse=', '), ', aborting PSA.')
     }
-
       psa.ref <- psa.result[startsWith(psa.result$strategy, reference),]  # We ignore strategy suffixes
       psa.strat <- psa.result[startsWith(psa.result$strategy, strategy),]
       IC <- psa.strat$C - psa.ref$C
@@ -266,7 +288,7 @@ psa.n <- function(pars,
 generate.psa.summary <- function(df.results, strategy, population, reference, strat.ctx, pars, jitter.x=.05, jitter.y=.05) {
   # Display the parameter value as color if there is only one parameter in the PSA
   # and this parameter is not stratified (same value for all strata -> variance = 0).
-  if (length(pars) == 1 && var(t(df.results[1,names(df.results)[endsWith(names(df.results), pars)]])) == 0) {
+  if (length(pars) == 1 && !startsWith(pars, '#dirichlet') && var(t(df.results[1,names(df.results)[endsWith(names(df.results), pars)]])) == 0) {
     color.var <- names(df.results)[endsWith(names(df.results), pars)][[1]]
   } else {
     color.var <- NULL
@@ -286,6 +308,12 @@ generate.psa.summary <- function(df.results, strategy, population, reference, st
 .fit.psa.params <- function(pars, strat.ctx, sd.estimate.func) {
   strat.dist.params <- lapply(strat.ctx, function(ctx) {
     ctx.params <- lapply(pars, function(p) {
+      if (startsWith(p, '#dirichlet###')) {
+        dirichlet.pars <- unlist(strsplit(sub('#dirichlet###', '', p), '###'))
+        dirichlet.mu <- sapply(dirichlet.pars, function(dp) ctx[[dp]][1])
+        dirichlet.sd <- sapply(dirichlet.pars, function(dp) sd.estimate.func(dp, ctx[[dp]][1]))
+        return(fit.dirichlet(dirichlet.mu, dirichlet.sd))
+      }
       return(fit.parameter(p, ctx[[p]][1], sd.estimate.func(p, ctx[[p]][1])))
     })
     names(ctx.params) <- pars
@@ -299,32 +327,46 @@ sample.psa.params <- function(pars, strat.dist.params, strat.ctx, excel.strata.d
   # Using a permutation to avoid bias when sampling multiple parameters with restrictions
   permuted.pars <- sample(pars)
   for(p in permuted.pars) {
-    par.values <- sapply(psa.strat.ctx, function(ctx) ctx[[p]][1])
-    is.constant.par <- all(par.values==par.values[1])
-    if (is.constant.par & !sample.by.stratum) {
-      sampled.par <- sample.parameter(p, strat.dist.params[[1]][[p]])
-      psa.strat.ctx <- lapply(names(psa.strat.ctx), function(stratum) {
-        ctx <- psa.strat.ctx[[stratum]]
-        ctx[p][1] <- sampled.par # Same value for all strata
-        return(ctx)
-      })
+    if (startsWith(p, '#dirichlet###')) {
+      sampled.pars <- sample.parameter(p, strat.dist.params[[1]][[p]])
+      dirichlet.pars <- str_split(sub('#dirichlet###', '', p), '###')[[1]]
+      # Assuming all strata have the same dirichlet parameters
+      for(i in seq_along(dirichlet.pars)) {
+        dp <- dirichlet.pars[i]
+        psa.strat.ctx <- lapply(names(psa.strat.ctx), function(stratum) {
+          ctx <- psa.strat.ctx[[stratum]]
+          ctx[dp][1] <- sampled.pars[i]
+          return(ctx)
+        })
+        names(psa.strat.ctx) <- names(strat.ctx)
+      }
     } else {
-      psa.strat.ctx <- lapply(names(psa.strat.ctx), function(stratum) {
-        ctx <- psa.strat.ctx[[stratum]]
-        sample.ok <- FALSE
-        while (!sample.ok) {
-          ctx[p][1] <- sample.parameter(p, strat.dist.params[[stratum]][[p]]) # Different sample for each strata
-          strat.ctx.tmp <- psa.strat.ctx
-          strat.ctx.tmp[[stratum]] <- ctx
-          strat.ctx.tmp <- refresh.context(p, strat.ctx.tmp, excel.strata.df, context.setup)
-          sample.ok <- !is.null(strat.ctx.tmp)
-        }
-        return(ctx)
-      })
+      par.values <- sapply(psa.strat.ctx, function(ctx) ctx[[p]][1])
+      is.constant.par <- all(par.values==par.values[1])
+      if (is.constant.par & !sample.by.stratum) {
+        sampled.par <- sample.parameter(p, strat.dist.params[[1]][[p]])
+        psa.strat.ctx <- lapply(names(psa.strat.ctx), function(stratum) {
+          ctx <- psa.strat.ctx[[stratum]]
+          ctx[p][1] <- sampled.par # Same value for all strata
+          return(ctx)
+        })
+      } else {
+        psa.strat.ctx <- lapply(names(psa.strat.ctx), function(stratum) {
+          ctx <- psa.strat.ctx[[stratum]]
+          sample.ok <- FALSE
+          while (!sample.ok) {
+            ctx[p][1] <- sample.parameter(p, strat.dist.params[[stratum]][[p]]) # Different sample for each strata
+            strat.ctx.tmp <- psa.strat.ctx
+            strat.ctx.tmp[[stratum]] <- ctx
+            strat.ctx.tmp <- refresh.context(p, strat.ctx.tmp, excel.strata.df, context.setup)
+            sample.ok <- !is.null(strat.ctx.tmp)
+          }
+          return(ctx)
+        })
+      }
+      names(psa.strat.ctx) <- names(strat.ctx)
     }
-    names(psa.strat.ctx) <- names(strat.ctx)
   }
-  
   psa.strat.ctx <- refresh.context(pars, psa.strat.ctx, excel.strata.df, context.setup.func)
   return(psa.strat.ctx)
 }
@@ -332,7 +374,7 @@ sample.psa.params <- function(pars, strat.dist.params, strat.ctx, excel.strata.d
 .plot.psa <- function(results, strategy, population, reference, strat.ctx, params, color.var=NULL, jitter.x=0, jitter.y=0) {
   if (is.character(results)) {
     # If character, assume it is a file path with the results data
-    results <- read.csv(results)
+    results <- read.xlsx(results, sheetIndex=1)
   }
   
   results.display <- results
@@ -393,7 +435,7 @@ sample.psa.params <- function(pars, strat.dist.params, strat.ctx, excel.strata.d
 .plot.acceptability <- function(results, strategy, population, reference, strat.ctx, pars) {
   if (is.character(results)) {
     # If character, assume it is a file path with the results data
-    results <- read.csv(results)
+    results <- read.xlsx(results, sheetIndex=1)
     results$CE_THRESHOLD <- factor(results$CE_THRESHOLD, levels=c(WTP.THRESHOLDS, Inf))
   }
   wtp.range <- seq(0,WTP.THRESHOLDS[length(WTP.THRESHOLDS)], 1000)
@@ -425,7 +467,7 @@ plot.ci.sweep <- function(pars,
                          markov,
                          sweep.parameter,
                          sweep.values,
-                         wtp=20000,
+                         wtp=25000,
                          sd.estimate.func=NULL,
                          context.setup.func=NULL,
                          n.iters=N.ITERS.DEFAULT,
@@ -474,8 +516,8 @@ plot.ci.sweep <- function(pars,
 }
 
 # p <- plot.ci.sweep(pars, strat.ctx,
-#               'bleeding', 'tree_bleeding_molecular',
 #               markov,
+#               'bleeding', 'tree_bleeding_molecular',
 #               '.c_molecular_test',
 #               seq(0,1000, 50),
 #               wtp=20000,
@@ -488,26 +530,42 @@ plot.ci.sweep <- function(pars,
 # print(p)
 
 
-store.results.psa <- function(results, psa.type, population, strategy.name, filename) {
+store.results.psa <- function(results, psa.type, population, strategy.name, filename, discount=DISCOUNT.RATE.DEFAULT) {
   time.preffix <- format(Sys.time(), "%Y_%m_%d__%H_%M_")
   output.dir <- paste0(getwd(), '/output/psa_', psa.type, '/', population)
   suppressWarnings(dir.create(output.dir, recursive=TRUE))
-  write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
+  # write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
+  
+  unlist.strat.ctx <- unlist(strat.ctx)
+  date.suffix <- format(Sys.Date(), '%Y%m%d')
+
+  sheet.data <- list(
+    'PSA Summary'=results$summary,
+    'Base parameters'=data.frame(
+      parameter=c(names(unlist.strat.ctx), 'discount'),
+      base.value=c(unlist.strat.ctx, discount)
+    )
+  )
+  
+  openxlsx::write.xlsx(sheet.data,
+                       paste0(output.dir, '/', filename, '.xlsx'),
+                       rowNames = F,
+                       colWidths='auto')
 }
 
 build.plots <- function(psa.type, population, strategy, reference, strat.ctx, option.name, sim.options, sd.estimate.name, suffix, pars=NULL, param.set.name=NULL) {
   slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
   
-  filename.preffix <- paste0(strategy, '__sd_', sd.estimate.name, '__par_')
+  filename.preffix <- paste0(strategy, '__', option.name, '__sd_', sd.estimate.name, '__par_')
   files.dir <- paste0(getwd(), '/output/psa_', psa.type, '/', population)
   
   files <- list.files(files.dir)
   if (!is.null(param.set.name)) {
     files <- files[startsWith(files, filename.preffix) &
-                     endsWith(files, paste0('__par_', param.set.name, '.csv'))   ]
+                     endsWith(files, paste0('__par_', param.set.name, '.xlsx'))   ]
   }
   if (!is.null(pars)) {
-    endsWithMulti <- Vectorize(function(x) any(endsWith(x, paste0(pars, '.csv'))), SIMPLIFY = TRUE)
+    endsWithMulti <- Vectorize(function(x) any(endsWith(x, paste0(pars, '.xlsx'))), SIMPLIFY = TRUE)
     files <- files[startsWith(files, filename.preffix) &
                      endsWithMulti(files) ]
   }
@@ -521,20 +579,20 @@ build.plots <- function(psa.type, population, strategy, reference, strat.ctx, op
   ie.range <- c(0, 0)
   
   for(f in files) {
-    df <- read.csv(paste0(files.dir, '/', f))
+    df <- read.xlsx(paste0(files.dir, '/', f), sheetIndex=1)
     ic.range <- range.union(range(df$IC), ic.range)
     ie.range <- range.union(range(df$IE), ie.range)
   }
-  
+
   for(f in files) {
     # if (psa.type=='univariate') {
     #   # If null, 
     #   slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
     # }
     filename <- paste0(files.dir, '/', f)
-    par <- str_match(filename, '^.*_par_(.*?).csv')[2]
-    df <- read.csv(filename)
-    filename.stripped <- substr(filename, 1, nchar(filename)-4)
+    par <- str_match(filename, '^.*_par_(.*?).xlsx')[2]
+    df <- read.xlsx(filename, sheetIndex=1)
+    filename.stripped <- substr(filename, 1, nchar(filename)-5)
     
     plt <- .plot.psa(filename, strategy, population, reference, strat.ctx, par) +
       coord_cartesian(xlim=ic.range, ylim=ie.range) +
@@ -587,6 +645,7 @@ build.plots <- function(psa.type, population, strategy, reference, strat.ctx, op
                   plot.acceptability=plt.acc)
     slides <- add.results.to.slide(slides, df, plots, par, sim.options, sd.estimate.name)
   }
+  
   slides %>% print(paste0('output/psa_', psa.type, '/', sim.options$population, '/', strategy, '__', option.name, '__sd_', sd.estimate.name, '__par_', suffix, '.pptx'))
 }
 
@@ -658,3 +717,12 @@ suppressMessages({
   
   return(slides)
 }
+
+# sim.options <- list(
+#    population='hiv_msm',
+#    reference='conventional_t_tca',
+#    strategy='arnme6e7_hpvhr_t_tca',
+#    reference.name='Conventional (TCA)',
+#    strategy.name='Co-test mRNA (TCA)'
+#   )
+# build.plots('multivariate', 'hiv_msm', 'arnme6e7_hpvhr_t_tca', 'conventional_t_tca', strat.ctx, 'cito_vs_cotest_arn', sim.options, 'sd_5', 'all_cd4', param.set.name='all_cd4')

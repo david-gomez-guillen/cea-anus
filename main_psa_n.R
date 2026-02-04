@@ -12,7 +12,7 @@ N.ITERS <- 1000
 N.CORES <- commandArgs(trailingOnly = TRUE)[1]
 if (is.na(N.CORES)) N.CORES <- 8
 DISCOUNT.RATE <- .03
-DEBUG <- F  # 1 core if TRUE
+DEBUG <- T  # 1 core if TRUE
 
 JITTER.X <- .05
 JITTER.Y <- .05
@@ -59,21 +59,37 @@ SD.ESTIMATE.FUNCTIONS <- list(
 )
 
 SIMULATION.OPTIONS <- list(
-  followup=list(
-    population='hiv_msm',
-    reference='conventional_t_tca',
-    strategy='arnme6e7_hpvhr_t_tca',
-    reference.name='Conventional (TCA)',
-    strategy.name='ARNmE6/E7 HPV-HR (TCA)'
+  cito_vs_cotest_arn=list(
+   population='hiv_msm',
+   reference='conventional_t_tca',
+   strategy='arnme6e7_hpvhr_t_tca',
+   reference.name='Conventional (TCA)',
+   strategy.name='Co-test mRNA (TCA)'
   )
+  #,
+  # cito_vs_cotest_pcr=list(
+  #  population='hiv_msm',
+  #  reference='conventional_t_tca',
+  #  strategy='conventional_hpvhrla_t_tca',
+  #  reference.name='Conventional (TCA)',
+  #  strategy.name='Co-test PCR (TCA)'
+  # )
   # ,
-  # irc_tca=list(
+  #  cotest_pcr_irc_vs_tca=list(
+  #    population='hiv_msm',
+  #    reference='conventional_hpvhrla_t_irc',
+  #    strategy='conventional_hpvhrla_t_tca',
+  #    reference.name='Co-test PCR (IRC)',
+  #    strategy.name='Co-test PCR (TCA)'
+  #  )
+  # ,
+  #  cotest_arn_irc_vs_tca=list(
   #   population='hiv_msm',
   #   reference='arnme6e7_hpvhr_t_irc',
   #   strategy='arnme6e7_hpvhr_t_tca',
   #   reference.name='ARNmE6/E7 HPV-HR (IRC)',
   #   strategy.name='ARNmE6/E7 HPV-HR (TCA)'
-  # )
+  #  )
 )
 
 psa.pars <- list(
@@ -88,6 +104,7 @@ psa.pars <- list(
   # probs=pars[startsWith(pars, 'p_') |
   #              startsWith(pars, 'survival_')]
   # ,
+  # cd4=list(list('p_cd4_l200', 'p_cd4_200_500', 'p_cd4_g500'))
   # sensitivities=pars[(startsWith(pars, 'p_hpv') | startsWith(pars, 'p_arn')) & endsWith(pars, '___hsil')]
   # ,
   # specificities=pars[(startsWith(pars, 'p_hpv') | startsWith(pars, 'p_arn')) & endsWith(pars, '___no_hsil')]
@@ -99,78 +116,21 @@ psa.pars <- list(
   # ,
   # tornados=c('u_hiv_p_cd4_g500', 'p_cd4_g500', 'p_cyto_b___hsil',
   #            'p_arnmhr_p___hsil', 'p_undetected_hsil_treatment_whole_followup')
+  # arn_sens_spec=c('p_arnmhr_p___hsil', 'p_arnmhr_p___no_hsil')
+  # critical=c('p_cancer___hsil_annual', 'p_arnmhr_p___hsil', 'u_hiv_p_cd4_g500')
+  # critical=c('p_cancer___hsil_annual', 'p_hpvhrla_p___hsil', 'p_undetected_hsil_treatment_whole_followup', 'u_hiv_p_cd4_g500')
 )
-for(p in pars[!pars %in% psa.pars$tornados]) {
-  psa.pars[[paste0('tornado_plus_', p)]] <- c(psa.pars$tornados, p)
-}
-psa.pars$tornados <- NULL
-
-param.names <- c(
-  .specificity_molecular='Molecular test specificity',
-  .sensitivity_molecular='Molecular test sensitivity',
-  .specificity_molecular_cyto='Specificity of molecular test (cytology)',
-  .sensitivity_molecular_cyto='Sensitivity of molecular test (cytology)',
-  .specificity_molecular_pipelle='Specificity of molecular test (pipelle)',
-  .sensitivity_molecular_pipelle='Sensitivity of molecular test (pipelle)',
-  u_hysterectomy='Non-cancer hysterectomy utility',
-  .p_cancer___bleeding='Prevalence of EC in women with PMB',
-  .sensitivity_tvu='Sensitivity of TVU',
-  .sensitivity_pipelle___bleeding='Sensitivity of pipelle',
-  .c_molecular_test='Cost of molecular test',
-  u_cancer='EC utility',
-  u_bleeding='PMB utility',
-  .specificity_pipelle='Specificity of pipelle',
-  .p_cancer___asymptomatic='Prevalence of EC',
-  .specificity_tvu='Specificity of TVU',
-  # .survival_5year___stage1='5-year survival (stage 1)',
-  .survival_5year='5-year EC survival',
-  .p_pipelle_success='Pipelle success probability',
-  .p_cancer_stage_1='Percentage of EC cases at stage 1',
-  .specificity_hysteroscopy___bleeding='Specificity of hysteroscopy',
-  .sensitivity_hysteroscopy___bleeding='Sensitivity of hysteroscopy',
-  .p_bmi_high='Proportion of obese women (BMI > 30)',
-  .c_tvu='Cost of TVU',
-  .c_hysterectomy___stage_1='Cost of hysterectomy, EC stage I (€)',
-  .c_hysterectomy___stage_2_4='Cost of hysterectomy, EC stage II-IV (€)',
-  c_phone_visit='Cost of phone visit',
-  .c_pipelle='Cost of pipelle',
-  .p_bleeding__cancer='Prevalence of PMB in women with EC',
-  .c_hysteroscopy='Cost of hysteroscopy',
-  .c_visit='Cost of visit',
-  .c_treatment='Cost of treatment (€)',
-  u_cancer_s1='EC utility (stage I)',
-  u_cancer_s2='EC utility (stage II)',
-  u_cancer_s3='EC utility (stage III)',
-  u_cancer_s4='EC utility (stage IV)',
-  u_undetected_cancer='Undetected EC utility',
-  .survival_5year_s1='5-year survival (stage I)',
-  .survival_5year_s2='5-year survival (stage II)',
-  .survival_5year_s3='5-year survival (stage III)',
-  .survival_5year_s4='5-year survival (stage IV)',
-  .p_bleeding='Probability of bleeding persistence',
-  .p_pipelle_tissue_success='Probability of pipelle success (tissue)',
-  .p_pipelle_insertion_success='Probability of pipelle success (insertion)',
-  .p_pipelle_insertion_success___parous='Probability of pipelle success (insertion)',
-  .rate_recurrence_s1='Recurrence rate (stage I)',
-  .rate_recurrence_s2='Recurrence rate (stage II)',
-  .rate_recurrence_s3='Recurrence rate (stage III)',
-  .rate_recurrence_s4='Recurrence rate (stage IV)',
-  .p_progression_cancer_s1_2='Annual cancer progression (stage I-II)',
-  .p_progression_cancer_s2_3='Annual cancer progression (stage II-III)',
-  .p_progression_cancer_s3_4='Annual cancer progression (stage III-IV)',
-  .p_death_other='Probability of death from other causes',
-  .c_cytology='Cost of cytology',
-  .c_first_visit='Cost of first visit',
-  .rate_prevalence='Prevalence rate of EC (global)',
-  p_death_other='Probability of death from other causes',
-  .p_bleeding___cancer='Prevalence of PMB in women with EC',
-  .hr_bmi='HR BMI',
-  .p_cancer___bleeding_pooled='Probability of EC in PMB',
-  .p_cancer___postmenopausal='Probability of EC in postmenopausal women',
-  Discount='Discount'
-)
+# for(p in pars[!pars %in% psa.pars$tornados]) {
+#   psa.pars[[paste0('tornado_plus_', p)]] <- c(psa.pars$tornados, p)
+# }
+# psa.pars$tornados <- NULL
 
 
+# print(strat.ctx$y40_44$p_cancer___hsil_annual)
+# for(stratum in names(strat.ctx)) {
+#   strat.ctx[[stratum]]$p_cancer___hsil_annual <- strat.ctx[[stratum]]$p_cancer___hsil_annual * 2
+# }
+# print(strat.ctx$y40_44$p_cancer___hsil_annual)
 
 
 #### MULTIVARIATE PSAS
@@ -189,10 +149,10 @@ if (DEBUG) {
     stopCluster(cl)
   }, add=TRUE)
   registerDoParallel(cl)
-  
+env <- foreach:::.foreachGlobals
+rm(list=ls(name=env), pos=env)  
   varlist <- ls(pos=1)
   # varlist <- varlist[!varlist %in% c('results', 'trees')]
-  
   clusterExport(cl=cl,varlist=varlist[(varlist %in% c('conventional', 'ascus_lsil_diff_arnme6e7_16')) | (!startsWith(varlist, 'conventional_') & !startsWith(varlist, 'ascus_lsil_diff') & !startsWith(varlist, 'arnme6e7') & !varlist %in% c('trees', 'strategies'))],
                 envir=environment())
   clusterEvalQ(cl=cl,{
@@ -201,6 +161,7 @@ if (DEBUG) {
     library(ggplot2)
     library(plotly)
     library(pbapply)
+    library(gtools)
   })
 }
 
@@ -272,9 +233,10 @@ for(param.set.name in names(psa.pars)) {
       #   unlink(paste0(output.dir, '/', f))
       # }
       # results <- generate.psa.summary(df.results, options$strategy, options$population, options$reference, strat.ctx, param.set, jitter.x=JITTER.X, jitter.y=JITTER.Y)
-    
-      filename <- paste0(options$strategy, '__sd_', sd.estimate.name, '__par_', param.set.name)
-      store.results.psa(results, 'multivariate', options$population, options$strategy.name, filename)
+
+      #'output/psa_', psa.type, '/', sim.options$population, '/', strategy, '__', option.name, '__sd_', sd.estimate.name, '__par_', suffix, '.pptx'
+      filename <- paste0(options$strategy, '__', option.name, '__sd_', sd.estimate.name, '__par_', param.set.name)
+      store.results.psa(results, 'multivariate', options$population, options$strategy.name, filename, discount=DISCOUNT.RATE)
 
       build.plots('multivariate', options$population, options$strategy, options$reference, strat.ctx, option.name, options, sd.estimate.name, suffix=param.set.name, param.set.name=param.set.name)
     }

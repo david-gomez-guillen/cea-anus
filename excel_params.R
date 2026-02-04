@@ -63,6 +63,20 @@ refresh.context <- function(pars, strat.ctx, excel.strata.df, context.setup.func
     df[,1] <- as.character(df[,1])
     df[,2] <- as.character(df[,2])
     names(df) <- c('par', 'value')
+
+    # Updating only specified parameters
+    excel.constant.pars <- df[sapply(df$value, function(x) {suppressWarnings(!is.na(as.numeric(x)))}), 'par']
+    excel.values <- as.numeric(df[df$par %in% excel.constant.pars, 'value'])
+    ctx.values <- strat.ctx[[stratum]][excel.constant.pars]
+    ctx.values <- sapply(ctx.values, function(x) x[1])
+    pars <- names(ctx.values[ctx.values != excel.values])
+    if (stratum == names(excel.strata.df)[1]) {
+      base.pars <- pars
+    } else {
+      pars <- unique(c(pars, base.pars))
+    }
+    ###
+
     for(p in pars) {
       if (nrow(df[df$par==p,]) == 1) {
         df[df$par==p, 'value'] <- strat.ctx[[stratum]][[p]][1]

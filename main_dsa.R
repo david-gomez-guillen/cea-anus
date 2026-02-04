@@ -1,11 +1,14 @@
 # library(Cairo)
+library(officer)
+library(openxlsx)
 
 # setwd('~/Documents/models_ce/anus')
 
 source('load_models.R')
+
 source('markov_dsa.R')
 
-N.PARAM.POINTS.TORNADO <- 2 
+N.PARAM.POINTS.TORNADO <- 2
 DISCOUNT.RATE <- .03
 N.CORES <- 8
 
@@ -13,14 +16,23 @@ EXCLUDED.PARAMS <- names(strat.ctx$y25_29[strat.ctx$y25_29 %in% c(0,1)])
 EXCLUDED.PARAMS <- c(EXCLUDED.PARAMS,
                      'periodicity_months',
                      'periodicity_times_in_year'
+                    #  'p_cyto_ascus_or_lsil___hsil',
+                    #  'p_cyto_ascus_or_lsil___no_hsil',
+                    #  'p_cyto_b___hsil',
+                    #  'p_cyto_b___no_hsil',
+                    #  'p_cyto_hsil___hsil',
+                    #  'p_cyto_hsil___no_hsil'
                      )
 
 pars <- independent.pars
 pars <- pars[!pars %in% EXCLUDED.PARAMS]
 
 dsa.pars <- list(
-  all=pars
+  # all=pars
   # ,
+  critical=c('c_hpvhrhc','p_cyto_b___hsil','p_undetected_hsil_treatment_whole_followup')
+  # ,
+  # ttt=c('survival_5year')
   # p_01=c('p_hra_hsil___cyto_hsil__no_hsil')
   # ,
   # p_02=c('p_hra_invasive_cancer___cyto_hsil__no_hsil')
@@ -49,8 +61,11 @@ dsa.pars <- list(
   #              startsWith(pars, 'rate_') |
   #              startsWith(pars, 'n_')]
   # ,
-  # critical=c('p_cyto_b___hsil', 'p_undetected_hsil_treatment_whole_followup',
-  #            'p_arnmhr_p___hsil', 'p_cd4_g500', 'u_hiv_p_cd4_g500')
+#   critical=c(
+# 'c_hpvla',
+# 'p_cyto_b___hsil',
+# 'p_undetected_hsil_treatment_whole_followup'
+# )
   # ,
   # test='p_hra_hsil___cyto_hsil__hsil'
   # ranged=pars[sapply(pars,
@@ -117,7 +132,7 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
   # ,
   # not_ranged_5=GET.RANGE.FUNC(.05)
   # ,
-  # range_10=GET.RANGE.FUNC(.1)
+  range_10=GET.RANGE.FUNC(.1)
   # ,
   # range_20=GET.RANGE.FUNC(.2)
   # ,
@@ -127,7 +142,7 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
   # ,
   # range_10_t=GET.RANGE.FUNC.TRUNC(.1)
   # ,
-  range_20_t=GET.RANGE.FUNC.TRUNC(.2)
+  # range_20_t=GET.RANGE.FUNC.TRUNC(.2)
   # ,
   # range_25=GET.RANGE.FUNC(.25)
   # ,
@@ -136,6 +151,13 @@ RANGE.ESTIMATE.FUNCTIONS <- list(
 )
 
 SIMULATION.OPTIONS <- list(
+  # c25_cito_vs_cotest_hyb=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='conventional_hpvhrhc_t_tca',
+  #   display.name='Costs 25€',
+  #   cost.tests=25
+  # )
   # irc=list(
   #   population='hiv_msm',
   #   reference='conventional_t_irc',
@@ -143,12 +165,124 @@ SIMULATION.OPTIONS <- list(
   #   display.name='ARN HPV-HR (IRC)'
   # )
   # ,
-  tca=list(
+  # c25_irc_vs_tca=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_irc',
+  #   strategy='conventional_t_tca',
+  #   display.name='Costs 25€ (Back)'
+  # ),
+  # c25_tca_vs_cotestpcrhr=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='conventional_hpvhrla_t_tca',
+  #   display.name='Costs 25€ (Fwd)',
+  #   cost.tests=25
+  # )
+  # ,
+  # c25_tca_vs_cotestpcrhr=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='conventional_hpvhrla_t_tca',
+  #   display.name='Costs 25€'
+  # )
+  # ,
+  # c6_diffpcrhr_vs_hyb=list(
+  #   population='hiv_msm',
+  #   reference='ascus_lsil_diff_hpvhrla_t_tca',
+  #   strategy='conventional_hpvhrhc_t_tca',
+  #   display.name='Costs 6€ (Back)'
+  # ),
+  # c6_cito_vs_cotest_hyb=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='conventional_hpvhrhc_t_tca',
+  #   display.name='Cytology vs Co-test Hyb',
+  #   cost.tests=6
+  # )
+  # ,
+  c6_cito_vs_cotest_arn=list(
     population='hiv_msm',
     reference='conventional_t_tca',
     strategy='arnme6e7_hpvhr_t_tca',
-    display.name='ARN HPV-HR (TCA)'
+    display.name='Cytology vs Co-test ARN',
+    cost.tests=6
   )
+  # ,
+  # c6_cito_vs_cotest_pcr=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='conventional_hpvhrla_t_tca',
+  #   display.name='Cytology vs Co-test PCR',
+  #   cost.tests=6
+  # )
+  # ,
+  # c25_cito_vs_cotest_arn=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   display.name='Cytology vs Co-test ARN',
+  #   cost.tests=25
+  # ),
+  # c25_cito_vs_cotest_pcr=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='conventional_hpvhrla_t_tca',
+  #   display.name='Cytology vs Co-test PCR',
+  #   cost.tests=25
+  # )
+  # ,
+  # c25_cito_vs_cotest_hyb=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='conventional_hpvhrhc_t_tca',
+  #   display.name='Cytology vs Co-test Hyb'
+  # )
+  # ,
+  # c25_arn_cotest_irc_vs_tca=list(
+  #   population='hiv_msm',
+  #   reference='arnme6e7_hpvhr_t_irc',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   display.name='ARN HPV-HR Co-test (IRC vs TCA)'
+  # ),
+  # c25_pcr_cotest_irc_vs_tca=list(
+  #   population='hiv_msm',
+  #   reference='conventional_hpvhrla_t_irc',
+  #   strategy='conventional_hpvhrla_t_tca',
+  #   display.name='PCR HPV-HR Co-test (IRC vs TCA)'
+  # ),
+  # c25_hyb_cotest_irc_vs_tca=list(
+  #   population='hiv_msm',
+  #   reference='conventional_hpvhrhc_t_irc',
+  #   strategy='conventional_hpvhrhc_t_tca',
+  #   display.name='Hyb HPV-HR Co-test (IRC vs TCA)'
+  # )
+  # ,
+  # c25_cito_vs_reflex_arn=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='ascus_lsil_diff_arnme6e7_hpvhr_t_tca',
+  #   display.name='Costs 6€'
+  # )
+  # ,
+  # c25_cito_vs_reflex_pcr=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='ascus_lsil_diff_hpvhrla_t_tca',
+  #   display.name='Costs 6€'
+  # ),
+  # c25_cito_vs_reflex_hyb=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='ascus_lsil_diff_hpvhrhc_t_tca',
+  #   display.name='Costs 6€'
+  # )
+  # ,
+  # tca=list(
+  #   population='hiv_msm',
+  #   reference='conventional_t_tca',
+  #   strategy='arnme6e7_hpvhr_t_tca',
+  #   display.name='ARN HPV-HR (TCA)'
+  # )
   # ,
   # arnhpvhr=list(
   #   population='hiv_msm',
@@ -169,10 +303,26 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
   time.preffix <- format(Sys.time(), "%Y_%m_%d__%H_%M_")
   output.dir <- paste0(getwd(), '/output/dsa_', dsa.type, '/', population)
   suppressWarnings(dir.create(output.dir, recursive=TRUE))
-  write.csv(results$summary, paste0(output.dir, '/', filename, '.csv'), row.names = F)
+  unlist.strat.ctx <- unlist(strat.ctx)
+  date.suffix <- format(Sys.Date(), '%Y%m%d')
+
+  sheet.data <- list(
+    'DSA Summary'=results$summary,
+    'Base parameters'=data.frame(
+      parameter=c(names(unlist.strat.ctx), 'discount'),
+      base.value=c(unlist.strat.ctx, DISCOUNT.RATE)
+    )
+  )
+  openxlsx::write.xlsx(sheet.data,
+                       paste0(output.dir, '/', filename, '__', date.suffix, '.xlsx'),
+                       rowNames = F,
+                       colWidths='auto')
+
   suffixes <- c('icer', 'icer_test', 'nhb', 'nhb_test')
   for(i in seq_along(results$plots)) {
-    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', suffixes[i], '.pdf'),
+    if (i == 1)
+      results$plots[[i]] <- results$plots[[i]] + coord_cartesian(xlim=c(-5e4, 5e4))
+    grDevices::cairo_pdf(paste0(output.dir, '/', filename, '_', suffixes[i], '__', date.suffix, '.pdf'),
                          width = 9,
                          height= 15)
     print(results$plots[[i]])
@@ -186,21 +336,21 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
     #        # device = 'cairo_pdf'
     # )
   }
-  
+
   for(i in seq_along(results$plots)) {
-    slides <- read_pptx('Plantilla_HPVinformationCentre.pptx')
+    slides <- read_pptx('Plantilla_HPVinformationCentre_vertical.pptx')
     
     slides <- slides %>%
-      add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
-      ph_with(rvg::dml(ggobj=results$plots[[1]]), ph_location_type('body', id=1))
-    
+      add_slide(layout='Vertical', master='Plantilla ICO') %>%
+      ph_with(rvg::dml(ggobj=results$plots[[1]]), ph_location_type('body', type_idx=1))
+
     slides <- slides %>%
-      add_slide(layout='Titulo y objetos', master='Plantilla ICO') %>%
-      ph_with(rvg::dml(ggobj=results$plots[[3]]), ph_location_type('body', id=1))
-    
+      add_slide(layout='Vertical', master='Plantilla ICO') %>%
+      ph_with(rvg::dml(ggobj=results$plots[[3]]), ph_location_type('body', type_idx=1))
+
     # TODO: Fix path
-    slides %>% print(paste0('output/dsa_univariate/hiv_msm/tornado.pptx'))
-    
+    slides %>% print(paste0('output/dsa_univariate/hiv_msm/tornado_', filename, '__', date.suffix, '.pptx'))
+
   }
   # ggsave(paste0(output.dir, '/', filename, '_2.pdf'),
   #        plot = results$plot2,
@@ -211,7 +361,7 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
   # )
   if (dsa.type == 'univariate') {
     for(par in names(results$plot.curves)) {
-      grDevices::cairo_pdf(paste0(output.dir, '/', filename, '__', par, '.pdf'))
+      grDevices::cairo_pdf(paste0(output.dir, '/', filename, '__', par, '__', date.suffix, '.pdf'))
       print(results$plot.curves[[par]])
       dev.off()
       # ggsave(paste0(output.dir, '/', filename, '__', par, '.pdf'),
@@ -227,7 +377,7 @@ store.results.dsa <- function(results, dsa.type, population, display.name, filen
   if (dsa.type != 'bivariate') {
     for(i in seq_along(results$plots)) {
       htmlwidgets::saveWidget(ggplotly(results$plots[[i]]),
-                              paste0(output.dir, '/', filename, '_', suffixes[i], '.html'),
+                              paste0(output.dir, '/', filename, '_', suffixes[i], '__', date.suffix, '.html'),
                               title=display.name,
                               libdir=paste0(output.dir, '/lib'))
     }
@@ -256,6 +406,13 @@ for(param.set.name in names(dsa.pars)) {
   param.set <- dsa.pars[[param.set.name]]
   for(option.name in names(SIMULATION.OPTIONS)) {
     options <- SIMULATION.OPTIONS[[option.name]]
+    for(ctx.name in names(strat.ctx)) {
+      cost.tests <- options$cost.tests
+      strat.ctx[[ctx.name]]$c_hpvhrhc <- cost.tests
+      strat.ctx[[ctx.name]]$c_hpvla <- cost.tests
+      strat.ctx[[ctx.name]]$c_arn_kit <- cost.tests - 0.67
+    }
+    strat.ctx <- refresh.context('c_arn_kit', strat.ctx, excel.strata.df)
     for(range.estimate.name in names(RANGE.ESTIMATE.FUNCTIONS)) {
       range.estimate.func <- RANGE.ESTIMATE.FUNCTIONS[[range.estimate.name]]
       results <- dsa.1(param.set, strat.ctx,
@@ -268,7 +425,7 @@ for(param.set.name in names(dsa.pars)) {
                        range.estimate=range.estimate.func,
                        context.setup.func=context.setup,
                        discount.rate = DISCOUNT.RATE,
-                       use.param.display.names=FALSE)
+                       use.param.display.names=TRUE)
       filename <- paste0(option.name, '__', range.estimate.name, '_params_', param.set.name)
       store.results.dsa(results, 'univariate', options$population, options$display.name, filename)
     }

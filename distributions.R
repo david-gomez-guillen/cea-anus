@@ -1,5 +1,7 @@
-BETA.PREFFIXES <- c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_', '.rate', 'rate')
-GAMMA.PREFFIXES <- c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_')
+BETA.PREFFIXES <- c('p_', '.p_', '.sensitivity_', '.specificity_', '.survival_', 'survival', '.u_', 'u_')
+GAMMA.PREFFIXES <- c('c_', '.c_',  'ly_', '.ly_', '.hr_', 'hr_', '.age_', 'n_', '.rate', 'rate')
+
+library(gtools)
 
 fit.parameter <- function(par, mean, sd, dist=NULL) {
   if (!is.null(dist)) {
@@ -40,6 +42,8 @@ sample.parameter <- function(par, dist.params, dist=NULL) {
     return(rbeta(1, shape1=dist.params$alpha, shape2=dist.params$beta))
   } else if (any(startsWith(par, GAMMA.PREFFIXES))) {
     return(rgamma(1, shape=dist.params$alpha, scale=dist.params$beta))
+  } else if (startsWith(par, '#dirichlet###')) {
+    return (rdirichlet(1, dist.params))
   } else {
     stop(paste0('Distribution must be specified for parameter "', par, '"'))
   }
@@ -75,4 +79,19 @@ fit.lognormal <- function(mean, sd) {
   norm.mean <- 2*log(mean) - .5*log(sd^2+mean^2)
   norm.var <- -2*log(mean)+log(sd^2+mean^2)
   return(list(mean=norm.mean, sd=sqrt(norm.var)))
+}
+
+fit.dirichlet <- function(means, sds) {  
+  alpha0 <- mean(means*(1-means)/(sds^2) - 1)
+  return(means * alpha0)
+}
+
+fit.dirichlet.maxsd <- function(means, sds) {  
+  alpha0 <- min(means*(1-means)/(sds^2) - 1)
+  return(means * alpha0)
+}
+
+fit.dirichlet.minsd <- function(means, sds) {  
+  alpha0 <- max(means*(1-means)/(sds^2) - 1)
+  return(means * alpha0)
 }
